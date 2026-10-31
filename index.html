@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#101916">
     <title>Wayfarer — Cepheus Deluxe Character Desk</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="built-in-items.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -21,10 +22,15 @@
 
         <p class="nav-label">YOUR CAMPAIGN</p>
         <nav class="main-nav">
-          <button class="nav-item active" type="button" aria-current="page">
+          <button class="nav-item active" id="characters-nav-button" type="button" aria-current="page">
             <span class="nav-icon" aria-hidden="true">◈</span>
             <span>Characters</span>
             <span class="nav-count" id="nav-character-count">0</span>
+          </button>
+          <button class="nav-item" id="items-nav-button" type="button">
+            <span class="nav-icon" aria-hidden="true">▤</span>
+            <span>Items</span>
+            <span class="nav-count" id="nav-item-count">0</span>
           </button>
           <button class="nav-item unavailable" type="button" disabled title="Ship management is planned for a later milestone">
             <span class="nav-icon" aria-hidden="true">⌁</span>
@@ -46,12 +52,13 @@
 
       <main class="main-content">
         <header class="topbar">
-          <div class="breadcrumb"><span>CAMPAIGN</span><span class="breadcrumb-divider">/</span><strong>CHARACTERS</strong></div>
+          <div class="breadcrumb"><span>CAMPAIGN</span><span class="breadcrumb-divider">/</span><strong id="page-section-label">CHARACTERS</strong></div>
           <button class="button button-quiet" id="export-button" type="button" disabled>
             <span aria-hidden="true">↓</span> Export data
           </button>
         </header>
 
+        <div id="characters-view">
         <section class="page-heading" aria-labelledby="page-title">
           <div>
             <p class="eyebrow">YOUR CREW, READY FOR ANYWHERE</p>
@@ -105,6 +112,59 @@
           </div>
           <p class="no-results" id="no-results" hidden>No characters match that search.</p>
         </section>
+        </div>
+
+        <section id="items-view" hidden>
+          <section class="page-heading" aria-labelledby="items-title">
+            <div>
+              <p class="eyebrow">YOUR CAMPAIGN REFERENCE</p>
+              <h1 id="items-title">Item database<span class="heading-period">.</span></h1>
+              <p class="page-description">Build a searchable catalog with your own item details and notes.</p>
+            </div>
+            <button class="button button-primary" id="new-item-button" type="button">
+              <span class="plus-icon" aria-hidden="true">+</span> Add item
+            </button>
+          </section>
+          <div class="notice" id="item-notice" role="status" aria-live="polite" hidden></div>
+          <section class="roster-section item-catalog" aria-labelledby="item-list-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">LOCAL CATALOG</p>
+                <h2 id="item-list-title">Your items <span class="catalog-count" id="catalog-count">0</span></h2>
+              </div>
+              <div class="catalog-filters">
+                <label class="search-box">
+                  <span class="search-icon" aria-hidden="true">⌕</span>
+                  <span class="visually-hidden">Search items</span>
+                  <input id="item-search" type="search" placeholder="Search items..." autocomplete="off">
+                </label>
+                <label class="visually-hidden" for="item-category-filter">Filter by category</label>
+                <select id="item-category-filter" class="catalog-category-filter">
+                  <option value="">All categories</option>
+                  <option>Equipment</option>
+                  <option>Armor</option>
+                  <option>Cybernetics</option>
+                  <option>Pharmaceuticals</option>
+                  <option>Robots</option>
+                  <option>Vehicles</option>
+                  <option>Weapons</option>
+                  <option>Other</option>
+                </select>
+              </div>
+            </div>
+            <div class="character-grid item-grid" id="item-grid"></div>
+            <div class="empty-state" id="item-empty-state">
+              <div class="empty-orbit" aria-hidden="true"><span>▤</span></div>
+              <p class="eyebrow">A CATALOG OF YOUR OWN</p>
+              <h3>No items added yet.</h3>
+              <p>Add campaign items with tech level, cost, and your own notes. Entries stay in this browser.</p>
+              <button class="button button-primary" id="empty-add-item-button" type="button">
+                <span class="plus-icon" aria-hidden="true">+</span> Add your first item
+              </button>
+            </div>
+            <p class="no-results" id="item-no-results" hidden>No items match those filters.</p>
+          </section>
+        </section>
 
         <footer class="page-footer">
           <span>WAYFARER <span class="footer-divider">•</span> A PERSONAL CAMPAIGN DESK</span>
@@ -137,28 +197,105 @@
           <label class="field">
             <span>Age</span>
             <input id="character-age" name="age" type="number" min="0" max="999" placeholder="e.g. 34">
+            <small class="field-helper">Normally 18 + 4 years per career term.</small>
           </label>
           <label class="field">
             <span>Homeworld</span>
             <input id="character-homeworld" name="homeworld" maxlength="80" placeholder="World or subsector">
           </label>
           <label class="field">
+            <span>Homeworld type</span>
+            <select id="homeworld-type">
+              <option value="">Choose a type</option>
+              <option>High-tech core world</option>
+              <option>Water world</option>
+              <option>Capital world</option>
+              <option>Frontier colony</option>
+              <option>Inhospitable outpost</option>
+              <option>Primitive backwater</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Homeworld skill (level 1)</span>
+            <select id="homeworld-skill" disabled>
+              <option value="">Choose a homeworld type first</option>
+            </select>
+          </label>
+          <label class="field">
             <span>Current career</span>
-            <input id="character-career" name="career" maxlength="80" placeholder="e.g. Scout">
+            <input id="character-career" name="career" list="career-options" maxlength="80" placeholder="e.g. Scout">
+            <datalist id="career-options">
+              <option value="Agent"></option>
+              <option value="Army"></option>
+              <option value="Belter"></option>
+              <option value="Colonist"></option>
+              <option value="Elite"></option>
+              <option value="Marine"></option>
+              <option value="Merchant"></option>
+              <option value="Navy"></option>
+              <option value="Pirate"></option>
+              <option value="Rogue"></option>
+              <option value="Scholar"></option>
+              <option value="Scout"></option>
+            </datalist>
           </label>
         </div>
 
-        <div class="form-section-heading">
-          <div><p class="eyebrow">CHARACTERISTICS</p><p class="section-helper">Add scores when you're ready; leave a field blank to omit it.</p></div>
+        <div class="form-section-heading characteristic-heading">
+          <div>
+            <p class="eyebrow">CHARACTERISTICS</p>
+            <p class="section-helper">Assign 5, 6, 7, 8, 9, and 10 exactly once—5 is lowest, 10 highest. Place them in Strength (STR), Dexterity (DEX), Endurance (END), Intelligence (INT), Education (EDU), and Social Standing (SOC).</p>
+          </div>
+          <button class="text-button" id="standard-array-button" type="button">Reset to 5–10 array</button>
         </div>
+        <label class="custom-characteristics-toggle">
+          <input id="custom-characteristics" type="checkbox">
+          <span>
+            <strong>Allow custom characteristics</strong>
+            <small>Check to use scores outside the standard 5–10 array (for example, rolled or referee-approved stats).</small>
+          </span>
+        </label>
         <div class="attribute-grid">
-          <label class="field attribute-field"><span>STR</span><input name="str" type="number" min="0" max="99" inputmode="numeric" aria-label="Strength"></label>
-          <label class="field attribute-field"><span>DEX</span><input name="dex" type="number" min="0" max="99" inputmode="numeric" aria-label="Dexterity"></label>
-          <label class="field attribute-field"><span>END</span><input name="end" type="number" min="0" max="99" inputmode="numeric" aria-label="Endurance"></label>
-          <label class="field attribute-field"><span>INT</span><input name="int" type="number" min="0" max="99" inputmode="numeric" aria-label="Intelligence"></label>
-          <label class="field attribute-field"><span>EDU</span><input name="edu" type="number" min="0" max="99" inputmode="numeric" aria-label="Education"></label>
-          <label class="field attribute-field"><span>SOC</span><input name="soc" type="number" min="0" max="99" inputmode="numeric" aria-label="Social Standing"></label>
+          <label class="field attribute-field"><span>STR</span><input name="str" type="number" min="0" max="99" required inputmode="numeric" aria-label="Strength"></label>
+          <label class="field attribute-field"><span>DEX</span><input name="dex" type="number" min="0" max="99" required inputmode="numeric" aria-label="Dexterity"></label>
+          <label class="field attribute-field"><span>END</span><input name="end" type="number" min="0" max="99" required inputmode="numeric" aria-label="Endurance"></label>
+          <label class="field attribute-field"><span>INT</span><input name="int" type="number" min="0" max="99" required inputmode="numeric" aria-label="Intelligence"></label>
+          <label class="field attribute-field"><span>EDU</span><input name="edu" type="number" min="0" max="99" required inputmode="numeric" aria-label="Education"></label>
+          <label class="field attribute-field"><span>SOC</span><input name="soc" type="number" min="0" max="99" required inputmode="numeric" aria-label="Social Standing"></label>
         </div>
+
+        <section class="generation-section" aria-labelledby="generation-title">
+          <div class="form-section-heading">
+            <div>
+              <p class="eyebrow">CAREER GENERATION</p>
+              <p class="section-helper" id="generation-title">Track term events, aging, benefits, and traits. Roll here or enter physical-dice results.</p>
+            </div>
+          </div>
+          <div class="form-grid generation-settings">
+            <label class="field">
+              <span>Career terms</span>
+              <input id="career-terms" type="number" min="0" max="7" value="0" inputmode="numeric">
+            </label>
+            <label class="field">
+              <span>Bonus benefit rolls</span>
+              <input id="bonus-benefits" type="number" min="0" max="20" value="0" inputmode="numeric">
+            </label>
+            <label class="field">
+              <span>Aging technology DM</span>
+              <select id="aging-tech-dm">
+                <option value="0">No modifier</option>
+                <option value="1">+1 (TL 8–10)</option>
+                <option value="2">+2 (TL 11–12)</option>
+                <option value="3">+3 (TL 13+)</option>
+              </select>
+            </label>
+          </div>
+          <p class="section-helper generation-rule-note">Use the PDF's career tables to resolve events and benefits; record the results and any skill gains below.</p>
+          <div id="term-event-rows" class="generation-rows"></div>
+          <div id="aging-rows" class="generation-rows"></div>
+          <div id="benefit-rows" class="generation-rows"></div>
+          <div id="trait-rows" class="generation-rows"></div>
+        </section>
 
         <div class="form-grid form-grid-notes">
           <label class="field field-wide">
@@ -175,9 +312,100 @@
           </label>
         </div>
 
+        <section class="generation-section inventory-section" aria-labelledby="inventory-title">
+          <div class="form-section-heading">
+            <div>
+              <p class="eyebrow">CARRIED ITEMS</p>
+              <p class="section-helper" id="inventory-title">Add equipment from the item catalog and track major-item encumbrance.</p>
+            </div>
+          </div>
+          <div class="inventory-add-row">
+            <label class="field inventory-select-field">
+              <span>Catalog item</span>
+              <select id="inventory-item-select"></select>
+            </label>
+            <label class="field inventory-quantity-field">
+              <span>Quantity</span>
+              <input id="inventory-item-quantity" type="number" min="1" max="999" value="1">
+            </label>
+            <button class="button button-quiet inventory-add-button" id="add-inventory-item-button" type="button">Add item</button>
+          </div>
+          <div class="inventory-list" id="inventory-list"></div>
+          <div class="encumbrance-summary" id="encumbrance-summary" aria-live="polite"></div>
+        </section>
+
         <div class="dialog-actions">
           <button class="button button-quiet" id="cancel-dialog-button" type="button">Cancel</button>
           <button class="button button-primary" type="submit">Save character</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="editor-dialog item-dialog" id="item-dialog" aria-labelledby="item-dialog-title">
+      <form class="editor-form" id="item-form">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">PERSONAL ITEM CATALOG</p>
+            <h2 id="item-dialog-title">Add item</h2>
+          </div>
+          <button class="icon-button" id="close-item-dialog-button" type="button" aria-label="Close item editor">×</button>
+        </div>
+        <p class="form-intro">Add your own item notes and reference details. Entries are stored only in this browser.</p>
+        <input id="item-id" name="id" type="hidden">
+        <div class="form-grid">
+          <label class="field field-wide">
+            <span>Item name <span class="required-mark">*</span></span>
+            <input id="item-name" name="name" required maxlength="100" placeholder="Enter an item name">
+          </label>
+          <label class="field">
+            <span>Category</span>
+            <select id="item-category" name="category">
+              <option>Equipment</option>
+              <option>Armor</option>
+              <option>Cybernetics</option>
+              <option>Pharmaceuticals</option>
+              <option>Robots</option>
+              <option>Vehicles</option>
+              <option>Weapons</option>
+              <option>Other</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Tech level</span>
+            <input id="item-tech-level" name="techLevel" type="number" min="0" max="33" placeholder="Optional">
+          </label>
+          <label class="field">
+            <span>Cost (Cr)</span>
+            <input id="item-cost" name="cost" type="number" min="0" step="1" placeholder="Optional">
+          </label>
+          <label class="field field-wide">
+            <span>Reference</span>
+            <input id="item-reference" name="reference" maxlength="100" placeholder="Optional book, page, or campaign reference">
+          </label>
+          <label class="field">
+            <span>Encumbrance (major items)</span>
+            <input id="item-encumbrance" name="encumbrance" type="number" min="0" max="99" step="0.5" value="1">
+          </label>
+          <label class="field">
+            <span>Protection</span>
+            <input id="item-protection" name="protection" maxlength="40" placeholder="Optional">
+          </label>
+          <label class="field">
+            <span>Skill required</span>
+            <input id="item-skill" name="skill" maxlength="60" placeholder="Optional">
+          </label>
+          <label class="field">
+            <span>Encumbrance when worn</span>
+            <input id="item-worn-encumbrance" name="wornEncumbrance" type="number" min="0" max="99" step="0.5" placeholder="Same as listed">
+          </label>
+          <label class="field field-wide">
+            <span>Description and notes</span>
+            <textarea id="item-description" name="description" rows="4" maxlength="1200" placeholder="Add your own notes, reference, or campaign details"></textarea>
+          </label>
+        </div>
+        <div class="dialog-actions">
+          <button class="button button-quiet" id="cancel-item-dialog-button" type="button">Cancel</button>
+          <button class="button button-primary" type="submit">Save item</button>
         </div>
       </form>
     </dialog>
