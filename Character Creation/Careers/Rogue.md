@@ -1,0 +1,46 @@
+# Rogue
+
+You were a criminal, drifter, or other ne’er do-well.
+
+## Skills Tables
+
+| Service Skills | Specialist Skills | Advanced Education |
+| :--- | :--- | :--- |
+| Streetwise | Melee Combat | Survival |
+| Recon | Liaison | Jack of All Trades |
+| Gun Combat | Athletics | Engineering |
+| Deception | Liaison | Medicine |
+| Stealth | Admin | Tactics |
+| Carousing | Repair | Computers |
+
+---
+
+## Ranks, Benefits & Mustering Out
+
+| Rank | Title | Bonus Skill | 1D | Cash | Materials |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 0 | Independent | | | | |
+| 1 | Associate | | 1 | 1000 | Low Passage |
+| 2 | Made Soldier | Gun Combat 1 | 2 | 5000 | +1 INT |
+| 3 | Lieutenant | | 3 | 5000 | Weapon |
+| 4 | Underboss | | 4 | 10000 | Contact |
+| 5 | Consigliere | | 5 | 20000 | Weapon |
+| 6 | Boss | | 6 | 30000 | Mid Passage |
+
+---
+
+## Rogue Events
+
+| 2D | Event |
+| :--- | :--- |
+| 2 | **Injury.** Roll on the Injury table. |
+| 3 | **Rat!** You have an opportunity to inform on a rival criminal. Betray them to the authorities and gain an extra Benefit roll but receive them as an Enemy; keep your mouth shut, and the rivalry is over - receive them as a Contact. |
+| 4 | **Cybered!** Your boss pays for advanced cybernetic implants. Gain Cr6000 worth of cybernetics. |
+| 5 | **Look at You, Hacker!** You engage in cybercrime. Throw Computer 8+; if you succeed, gain an additional Benefit throw. If you fail, go to Prison. |
+| 6 | **Caught!** You may try to defend yourself; throw Admin 8+ to avoid going to Prison. Alternatively, you may hire a hotshot lawyer to defend you; lose one Benefit but gain the lawyer as a Contact. |
+| 7 | **Life Event.** Roll on the Life Event table. |
+| 8 | **Heist!** You participate in a high-stakes criminal operation. Throw Computer 8+, Stealth 8+, or Streetwise 8+; if you succeed, gain an extra Benefit throw. If you fail, go to Prison. |
+| 9 | **Gang War!** You become involved in a feud between gangs. Throw Gun Combat 8+ or Melee Combat 8+; if you succeed, gain a level in Streetwise; if you fail, roll on the Injury Table. You gain an Enemy in the rival gang in any case. |
+| 10 | **Gambling Ring.** You join a gambling ring – or even organize one. If you wish, you may risk a Benefit roll. Throw Carousing 8+ or Streetwise 8+. If you succeed, gain an additional Benefit roll. If you fail, lose the Benefit roll you risked. |
+| 11 | **Mentor.** You befriend a boss of a famous criminal gang. Gain them as a Contact. |
+| 12 | **Advancement.** Crime really does pay. Gain a rank, and a free skill level. |
