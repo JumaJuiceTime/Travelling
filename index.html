@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="styles.css">
     <script src="built-in-items.js" defer></script>
     <script src="career-data.js" defer></script>
+    <script src="trait-data.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -183,7 +184,14 @@
           </div>
           <button class="icon-button" id="close-dialog-button" type="button" aria-label="Close editor">×</button>
         </div>
-        <p class="form-intro">Capture the details you want at the table. You can update this record at any time.</p>
+        <p class="form-intro" id="character-editor-intro">Capture the details you want at the table. You can update this record at any time.</p>
+        <label class="custom-characteristics-toggle iron-man-toggle" id="iron-man-toggle">
+          <input id="iron-man-rule" type="checkbox">
+          <span>
+            <strong>Optional rule: Iron Man</strong>
+            <small>Any injury suffered during character creation is fatal. When an event causes an injury, roll its Injury table below.</small>
+          </span>
+        </label>
 
         <input id="character-id" name="id" type="hidden">
         <div class="form-grid">
@@ -191,16 +199,16 @@
             <span>Character name <span class="required-mark">*</span></span>
             <input id="character-name" name="name" required maxlength="80" placeholder="e.g. Alex Venn">
           </label>
-          <label class="field">
+          <label class="field" id="homeworld-type-field">
             <span>Species</span>
             <input id="character-species" name="species" maxlength="60" placeholder="e.g. Human">
           </label>
-          <label class="field">
+          <label class="field" id="homeworld-skill-field">
             <span>Age</span>
             <input id="character-age" name="age" type="number" min="0" max="999" placeholder="e.g. 34">
             <small class="field-helper">Normally 18 + 4 years per career term.</small>
           </label>
-          <label class="field">
+          <label class="field" id="career-field">
             <span>Homeworld</span>
             <input id="character-homeworld" name="homeworld" maxlength="80" placeholder="World or subsector">
           </label>
@@ -242,14 +250,14 @@
           </label>
         </div>
 
-        <div class="form-section-heading characteristic-heading">
+        <div class="form-section-heading characteristic-heading" id="characteristic-heading">
           <div>
             <p class="eyebrow">CHARACTERISTICS</p>
-            <p class="section-helper">Assign 5, 6, 7, 8, 9, and 10 exactly once—5 is lowest, 10 highest. Place them in Strength (STR), Dexterity (DEX), Endurance (END), Intelligence (INT), Education (EDU), and Social Standing (SOC).</p>
+            <p class="section-helper" id="characteristic-helper">Assign 5, 6, 7, 8, 9, and 10 exactly once—5 is lowest, 10 highest. Place them in Strength (STR), Dexterity (DEX), Endurance (END), Intelligence (INT), Education (EDU), and Social Standing (SOC).</p>
           </div>
           <button class="text-button" id="standard-array-button" type="button">Reset to 5–10 array</button>
         </div>
-        <label class="custom-characteristics-toggle">
+        <label class="custom-characteristics-toggle" id="custom-characteristics-toggle">
           <input id="custom-characteristics" type="checkbox">
           <span>
             <strong>Allow custom characteristics</strong>
@@ -272,7 +280,7 @@
           <small>Stamina is END plus Athletics level; without Athletics, it equals END. Lifeblood is twice Stamina.</small>
         </div>
 
-        <section class="generation-section" aria-labelledby="generation-title">
+        <section class="generation-section" id="career-generation-section" aria-labelledby="generation-title">
           <div class="form-section-heading">
             <div>
               <p class="eyebrow">CAREER GENERATION</p>
@@ -295,12 +303,13 @@
               </select>
             </label>
           </div>
-          <p class="section-helper generation-rule-note">Complete each term in order. Each career event is rolled automatically once its career is selected, and the result appears with that term.</p>
+          <p class="section-helper generation-rule-note">Complete each term in order. Roll each career event when ready; its result and effects will appear in the event box.</p>
           <p class="section-helper generation-rule-note">Career skill selections below follow the selected career tables. They are added to the Skills field when saved; additional skills and final skill-cap adjustments can still be recorded there.</p>
           <p class="generation-progress" id="career-progress-summary" aria-live="polite"></p>
           <p class="career-progress-error" id="career-progress-error" role="alert" hidden></p>
           <div id="career-skill-rows" class="generation-rows"></div>
           <div id="term-event-rows" class="generation-rows"></div>
+          <p class="career-death-alert" id="iron-man-death-alert" role="alert" hidden>Character died during creation under the Iron Man rule. Start a new character from the beginning.</p>
           <div class="career-progression-actions" id="career-progression-actions">
             <button class="button button-quiet" id="muster-out-button" type="button">Muster out</button>
             <button class="button button-quiet" id="switch-career-button" type="button">Switch careers</button>
@@ -335,14 +344,26 @@
           <div id="trait-rows" class="generation-rows"></div>
         </section>
 
+        <section class="generation-section character-sheet-record" id="character-sheet-record" aria-labelledby="character-sheet-record-title" hidden>
+          <div class="form-section-heading">
+            <div>
+              <p class="eyebrow">CREATION RECORD</p>
+              <p class="section-helper" id="character-sheet-record-title">Career history and character-creation outcomes are preserved as part of this sheet.</p>
+            </div>
+          </div>
+          <div id="character-sheet-record-content" class="sheet-record-content"></div>
+        </section>
+
         <div class="form-grid form-grid-notes">
           <label class="field field-wide">
             <span>Career history</span>
             <textarea id="character-history" name="history" rows="3" maxlength="2000" placeholder="Record careers, terms, and notable turning points..."></textarea>
+            <small class="field-helper" id="career-history-helper">Record careers, terms, and notable turning points.</small>
           </label>
           <label class="field">
             <span>Skills</span>
             <textarea id="character-skills" name="skills" rows="4" maxlength="2000" placeholder="One skill per line"></textarea>
+            <small class="field-helper" id="skills-helper">Career and homeworld awards are added to these manually recorded skills when saved.</small>
           </label>
           <label class="field">
             <span>Notes</span>
@@ -374,7 +395,7 @@
 
         <div class="dialog-actions">
           <button class="button button-quiet" id="cancel-dialog-button" type="button">Cancel</button>
-          <button class="button button-primary" type="submit">Save character</button>
+          <button class="button button-primary" id="save-character-button" type="submit">Save character</button>
         </div>
       </form>
     </dialog>

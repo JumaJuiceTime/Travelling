@@ -231,91 +231,91 @@ Traits are unique features of competent and driven characters, such as player ch
   ## Starship & Stunt Driver Traits
 
 ### **Starship**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** The character has inherited, won by gambling, loaned, or otherwise received a share in a starship[cite: 13]. You may take this Trait multiple times[cite: 13]. The first time you take it, you receive a 200-ton Trader, a 100-ton Prospector, a 100-ton Scout, or a 200-ton Research Vessel, with forty years’ worth of full mortgage payments remaining[cite: 13]. Each additional time you take this Trait, increase the ship's age by a decade and reduce the mortgage payments by one decade as well[cite: 13]. Taking this Trait five times means owning a ship outright, but it will be a 40-year-old antique[cite: 13]. If the character already has the Starship trait, and musters out with a Trader, Scout, or Research vessel, count that Mustering Out Benefit as if they had taken the Starship trait again[cite: 13]. For example, a Scout picks the Starship trait, and then receives two Scout Mustering Out Benefits[cite: 13]. Instead of having a Scout on loan from the Scout Service, the character owns a 20-year-old Scout starship with 20 years of the mortgage already paid off[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** The character has inherited, won by gambling, loaned, or otherwise received a share in a starship. You may take this Trait multiple times. The first time you take it, you receive a 200-ton Trader, a 100-ton Prospector, a 100-ton Scout, or a 200-ton Research Vessel, with forty years’ worth of full mortgage payments remaining. Each additional time you take this Trait, increase the ship's age by a decade and reduce the mortgage payments by one decade as well. Taking this Trait five times means owning a ship outright, but it will be a 40-year-old antique. If the character already has the Starship trait, and musters out with a Trader, Scout, or Research vessel, count that Mustering Out Benefit as if they had taken the Starship trait again. For example, a Scout picks the Starship trait, and then receives two Scout Mustering Out Benefits. Instead of having a Scout on loan from the Scout Service, the character owns a 20-year-old Scout starship with 20 years of the mortgage already paid off.
 ### **Stunt Driver**
-  * **Prerequisite:** Relevant Vehicle Skill 1[cite: 13]
-  * **Effect:** The character has a flair for handling vehicles in situations that were well outside the engineering team’s parameters when the vehicle was in the design and testing phase[cite: 13]. Whenever the character is performing stunts like flying aircraft into tunnels, driving motorcycles down flights of stairs, or even jumping cars off ramps and over ravines, throw the relevant vehicle skill with Advantage[cite: 13].
+  * **Prerequisite:** Relevant Vehicle Skill 1
+  * **Effect:** The character has a flair for handling vehicles in situations that were well outside the engineering team’s parameters when the vehicle was in the design and testing phase. Whenever the character is performing stunts like flying aircraft into tunnels, driving motorcycles down flights of stairs, or even jumping cars off ramps and over ravines, throw the relevant vehicle skill with Advantage.
 
 ---
 
 ## Other Traits
 
 ### **Artistic**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** The character is naturally gifted in artistic endeavors[cite: 13]. Gain Advantage when rolling a test where artistic talent is relevant[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** The character is naturally gifted in artistic endeavors. Gain Advantage when rolling a test where artistic talent is relevant.
 ### **Attractive**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** Roll tests with Advantage in situations where good looks might be important[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** Roll tests with Advantage in situations where good looks might be important.
 ### **Codebreaker**
-  * **Prerequisite:** EDU 9+[cite: 13]
-  * **Effect:** When attempting to decipher codes and break encryptions, roll with Advantage[cite: 13]. This trait can also be applied to languages in which the character is not fluent[cite: 13].
+  * **Prerequisite:** EDU 9+
+  * **Effect:** When attempting to decipher codes and break encryptions, roll with Advantage. This trait can also be applied to languages in which the character is not fluent.
 ### **Contacts**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** The character has highly useful connections[cite: 13]. Gain 1d3+1 Contacts (see the Character Generation chapter)[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** The character has highly useful connections. Gain 1d3+1 Contacts (see the Character Generation chapter).
 ### **Cyborg Compatibility**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** The character is highly receptive to cybernetics[cite: 13]. The cyborg gains three Cybernetic Points[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** The character is highly receptive to cybernetics. The cyborg gains three Cybernetic Points.
 ### **Diplomat**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** When the Referee rolls for NPC Reactions to you specifically, they should roll twice and take the more favorable result[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** When the Referee rolls for NPC Reactions to you specifically, they should roll twice and take the more favorable result.
 ### **Eidetic Memory**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** The character’s recall is incredible[cite: 13]. When rolling to remember detailed information, gain Advantage[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** The character’s recall is incredible. When rolling to remember detailed information, gain Advantage.
 ### **Empath**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** The character, while not being a "true" psion (unless otherwise trained) possesses "passive" empathy allowing them to easily read another person's emotions[cite: 13]. Whenever trying to determine an NPC's emotional state, or find out if an NPC is lying, the empath has Advantage[cite: 13]. This also applies to games of chance and bluffing, such as poker, where reading an opponent is a central aspect to the game[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** The character, while not being a "true" psion (unless otherwise trained) possesses "passive" empathy allowing them to easily read another person's emotions. Whenever trying to determine an NPC's emotional state, or find out if an NPC is lying, the empath has Advantage. This also applies to games of chance and bluffing, such as poker, where reading an opponent is a central aspect to the game.
 ### **Evasion**
-  * **Prerequisite:** DEX 9+[cite: 13]
-  * **Effect:** With this trait, diving for cover does not take up your next action[cite: 13].
+  * **Prerequisite:** DEX 9+
+  * **Effect:** With this trait, diving for cover does not take up your next action.
 ### **Explorer’s Society**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** The character receives membership in the exclusive Explorer's Society[cite: 13]. Membership grants a free high-passage ticket for one parsec every two months and free stay at Society hostels in most starports[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** The character receives membership in the exclusive Explorer's Society. Membership grants a free high-passage ticket for one parsec every two months and free stay at Society hostels in most starports.
 ### **Fast Healing**
-  * **Prerequisite:** END 9+[cite: 13]
-  * **Effect:** The character recovers on their own from a Minor Wound within 1D hours (rather than a day) in the absence of treatment, and from a serious wound within 3D days of medical care[cite: 13]. This is not cumulative with the increased rate of healing when successfully treated by a Surgeon[cite: 13].
+  * **Prerequisite:** END 9+
+  * **Effect:** The character recovers on their own from a Minor Wound within 1D hours (rather than a day) in the absence of treatment, and from a serious wound within 3D days of medical care. This is not cumulative with the increased rate of healing when successfully treated by a Surgeon.
 ### **Immunity**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** The character is particularly resistant to toxins and pathogens[cite: 13]. When making a throw to resist poison or disease, the character throws with Advantage[cite: 13]. When a medic treats this character with Medicinal or Panacea pharmaceuticals, they also gain Advantage[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** The character is particularly resistant to toxins and pathogens. When making a throw to resist poison or disease, the character throws with Advantage. When a medic treats this character with Medicinal or Panacea pharmaceuticals, they also gain Advantage.
 ### **Intimidating**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** You just look scary, or you can manifest scariness when you want to[cite: 13]. Roll with Advantage on any tests when intimidating people into giving you information or complying with your requests[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** You just look scary, or you can manifest scariness when you want to. Roll with Advantage on any tests when intimidating people into giving you information or complying with your requests.
 ### **Iron Liver**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** For whatever reason, the character has a high tolerance for alcohol[cite: 13]. When rolling to drink someone under the table, roll with Advantage[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** For whatever reason, the character has a high tolerance for alcohol. When rolling to drink someone under the table, roll with Advantage.
 ### **Languages**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** The character is fluent in three additional languages common to the sector[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** The character is fluent in three additional languages common to the sector.
 ### **Latent Psion**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** The character has untrained psionic abilities[cite: 13]. See the Psionics chapter[cite: 13]. Untrained, the character has 1 PSI point and one of the following powers: Enhanced Characteristic, Sense, Lift 1 gram, Life Detection, or Blink[cite: 13]. The PSI point regenerates after a night's sleep, as usual[cite: 13]. Psionic drugs affect the character as usual and allow more frequent use of their powers[cite: 13]. Actual psionic training allows the character to roll a normal PSI characteristic and additional powers[cite: 13]. See the Psionics chapter for more details[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** The character has untrained psionic abilities. See the Psionics chapter. Untrained, the character has 1 PSI point and one of the following powers: Enhanced Characteristic, Sense, Lift 1 gram, Life Detection, or Blink. The PSI point regenerates after a night's sleep, as usual. Psionic drugs affect the character as usual and allow more frequent use of their powers. Actual psionic training allows the character to roll a normal PSI characteristic and additional powers. See the Psionics chapter for more details.
 ### **Packrat**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** The character knows how to pack and carry equipment efficiently[cite: 13]. The packrat is unencumbered when carrying up to twice their STR in items[cite: 13]. The character is Heavily Loaded when carrying up to four times their STR in items[cite: 13]. Note that this recalculation of encumbrance limits should not include the STR attribute DM[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** The character knows how to pack and carry equipment efficiently. The packrat is unencumbered when carrying up to twice their STR in items. The character is Heavily Loaded when carrying up to four times their STR in items. Note that this recalculation of encumbrance limits should not include the STR attribute DM.
 ### **Radiation Resistant**
-  * **Prerequisite:** END 9+[cite: 13]
-  * **Effect:** The character has higher than usual tolerance for radiation[cite: 13]. The character only receives 75 per cent of rads from radiation exposure[cite: 13]. Round fractions down[cite: 13].
+  * **Prerequisite:** END 9+
+  * **Effect:** The character has higher than usual tolerance for radiation. The character only receives 75 per cent of rads from radiation exposure. Round fractions down.
 ### **Scavenger King**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** The character is extremely talented at finding parts, gear, weapons, or just about anything that the group could need, in a pinch[cite: 13]. When using a skill to scavenge or scrounge equipment, roll with Advantage[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** The character is extremely talented at finding parts, gear, weapons, or just about anything that the group could need, in a pinch. When using a skill to scavenge or scrounge equipment, roll with Advantage.
 ### **Strong-Willed**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** This character gains Advantage when being threatened, intimidated, or coerced[cite: 13]. This trait also applies to any rolls to resist Psychic domination[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** This character gains Advantage when being threatened, intimidated, or coerced. This trait also applies to any rolls to resist Psychic domination.
 ### **Will to Live**
-  * **Prerequisite:** END 9+[cite: 13]
-  * **Effect:** When using the Trauma Surgery rules, throw with Advantage when throwing for Trauma Surgery[cite: 13]. This trait applies even if the attending physician or autodoc does not have the Surgeon Trait[cite: 13].
+  * **Prerequisite:** END 9+
+  * **Effect:** When using the Trauma Surgery rules, throw with Advantage when throwing for Trauma Surgery. This trait applies even if the attending physician or autodoc does not have the Surgeon Trait.
 ### **Lucky**
-  * **Prerequisite:** None; only in games using the optional Hero Points rules[cite: 13].
-  * **Effect:** Your character starts each game session with 3, rather than 2, Hero Points[cite: 13].
+  * **Prerequisite:** None; only in games using the optional Hero Points rules.
+  * **Effect:** Your character starts each game session with 3, rather than 2, Hero Points.
 ### **Navigator**
-  * **Prerequisite:** Survival 1[cite: 13]
-  * **Effect:** When throwing to navigate a course on a world (land, sea, or air) or to call in fire support, throw with Advantage[cite: 13].
+  * **Prerequisite:** Survival 1
+  * **Effect:** When throwing to navigate a course on a world (land, sea, or air) or to call in fire support, throw with Advantage.
 ### **Protector**
-  * **Prerequisite:** Melee Combat skill[cite: 13]
-  * **Effect:** Once per battle you can choose to take damage that would otherwise be dealt to another character in close range to you[cite: 13].
+  * **Prerequisite:** Melee Combat skill
+  * **Effect:** Once per battle you can choose to take damage that would otherwise be dealt to another character in close range to you.
 ### **Spot Weakness**
-  * **Prerequisite:** None[cite: 13]
-  * **Effect:** If the character spends a full minute observing a target, they can spot its weakness with a successful INT 8+ test[cite: 13]. All damage rolls should be rolled twice, and the higher result taken[cite: 13]. For ship combat only, substitute Computer/INT 8+ test, modified by the vessel’s computer DM, instead of an INT test[cite: 13].
+  * **Prerequisite:** None
+  * **Effect:** If the character spends a full minute observing a target, they can spot its weakness with a successful INT 8+ test. All damage rolls should be rolled twice, and the higher result taken. For ship combat only, substitute Computer/INT 8+ test, modified by the vessel’s computer DM, instead of an INT test.
 ### **Trash Talk**
-  * **Prerequisite:** Carousing 1 or Deception 1[cite: 13]
-  * **Effect:** As a free action in a battle, you can attempt a Carousing or Deception test to draw the attention of an enemy nearby or closer to yourself, causing them to attack only you on their next turn[cite: 13].
+  * **Prerequisite:** Carousing 1 or Deception 1
+  * **Effect:** As a free action in a battle, you can attempt a Carousing or Deception test to draw the attention of an enemy nearby or closer to yourself, causing them to attack only you on their next turn.

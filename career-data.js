@@ -6,7 +6,22 @@ const CAREER_DATA = {
     specialist: ["Deception", "Gun Combat", "Grav Vehicle", "Athletics", "Driving", "Recon"],
     advanced: ["Admin", "Computer", "Liaison", "Science", "Medicine", "Leadership"],
     rankSkills: { 3: ["Admin"] },
-    eventNames: { 2: "Injury", 3: "Cybernetics", 4: "Dangerous Mission", 5: "Specialist Training", 6: "Labor Dispute", 7: "Life Event", 8: "Undercover", 9: "Trusted Informant", 10: "Kidnapping Rescue", 11: "Mentor", 12: "Conspiracy" }
+    cashBenefits: [1000, 5000, 10000, 10000, 20000, 50000],
+    materialBenefits: ["Low Passage", "+1 INT", "Weapon", "Contact", "+1 SOC", "High Passage"],
+    eventNames: { 2: "Injury", 3: "Cybernetics", 4: "Dangerous Mission", 5: "Specialist Training", 6: "Labor Dispute", 7: "Life Event", 8: "Undercover", 9: "Trusted Informant", 10: "Kidnapping Rescue", 11: "Mentor", 12: "Conspiracy" },
+    eventDetails: {
+      2: "Injury: roll on the Injury table; you are not ejected from the career.",
+      3: "Your employer pays for Cr 8,000 worth of advanced cybernetics.",
+      4: "Dangerous Mission: roll Recon 8+, Streetwise 8+, or Gun Combat 8+. Success grants an extra benefit roll; failure requires an Injury roll.",
+      5: "Specialist Training: roll EDU 8+ to increase any one skill by one level.",
+      6: "Labor Dispute: avoid bloodshed to gain the union leader as a Contact but lose the after-action bonus; or suppress the movement to gain an extra benefit and the union leader as an Enemy.",
+      7: "Life Event: roll on the Life Events table.",
+      8: "Undercover: roll Streetwise 8+ or Deception 8+. Success grants one Rogue Specialist skill; failure requires an Injury roll.",
+      9: "Trusted Informant: roll Streetwise 8+ to gain a Contact.",
+      10: "Kidnapping Rescue: roll Investigation 8+ or Stealth 8+. Success grants a VIP Contact; failure requires an Injury roll.",
+      11: "Mentor: gain Leadership or Admin and a Contact.",
+      12: "Conspiracy: gain one skill level and one rank."
+    }
   },
   Army: {
     service: ["Gun Combat", "Recon", "Heavy Weapons", "Melee Combat", "Driving", "Athletics"],
@@ -14,7 +29,22 @@ const CAREER_DATA = {
     advanced: ["Computer", "Admin", "Medicine", "Jack of All Trades", "Leadership", "Gunnery"],
     rankSkills: { 1: ["Leadership"], 3: ["Tactics"] },
     rankAttributes: { 6: "SOC +1" },
-    eventNames: { 2: "Injury", 3: "Cybernetics", 4: "Hostile World", 5: "Street Fighting", 6: "Budget Cuts", 7: "Life Event", 8: "Police Action", 9: "Garrison", 10: "Bug Hunt", 11: "Electronic Warfare", 12: "Advancement" }
+    cashBenefits: [1000, 5000, 10000, 10000, 2000, 50000],
+    materialBenefits: ["Low Passage", "+1 INT", "Weapon", "Mid Passage", "Weapon", "High Passage"],
+    eventNames: { 2: "Injury", 3: "Cybernetics", 4: "Hostile World", 5: "Street Fighting", 6: "Budget Cuts", 7: "Life Event", 8: "Police Action", 9: "Garrison", 10: "Bug Hunt", 11: "Electronic Warfare", 12: "Advancement" },
+    eventDetails: {
+      2: "Injury: roll on the Injury table; you are not ejected from the career.",
+      3: "The military pays for Cr 8,000 worth of advanced cybernetics.",
+      4: "Hostile World: gain Animals, Survival, or Zero-G.",
+      5: "Street Fighting: gain Tactics, Stealth, or Streetwise.",
+      6: "Budget Cuts: roll Admin 8+. Success gains the unit commander as a Contact; failure gains a government official as an Enemy.",
+      7: "Life Event: roll on the Life Events table.",
+      8: "Police Action: roll DEX 8+ or END 8+. Success gains Liaison, Recon, Leadership, or Tactics; failure requires an Injury roll.",
+      9: "Garrison: gain Admin, Carousing, or Streetwise.",
+      10: "Bug Hunt: roll Gun Combat 8+. Success gains Animals or Survival; failure requires an Injury roll.",
+      11: "Electronic Warfare: gain Computer 1.",
+      12: "Advancement: gain one rank and one free skill level."
+    }
   },
   Belter: {
     service: ["Repair", "Demolitions", "Piloting", "Computers", "Zero-G", "Athletics"],
@@ -22,35 +52,110 @@ const CAREER_DATA = {
     advanced: ["Admin", "Medicine", "Grav Vehicles", "Liaison", "Science", "Leadership"],
     rankSkills: { 4: ["Admin"] },
     rankAttributes: { 5: "EDU +1" },
-    eventNames: { 2: "Injury", 3: "Specialist Training", 4: "Explosion", 5: "Protection Racket", 6: "Bureaucracy", 7: "Life Event", 8: "Drone Operations", 9: "Strike", 10: "Investment", 11: "Cyberterrorism", 12: "Advancement" }
+    cashBenefits: [1000, 5000, 5000, 10000, 30000, 100000],
+    materialBenefits: ["Low Passage", "+1 INT", "Space Suit", "Mid Passage", "+1 EDU", "Prospector"],
+    eventNames: { 2: "Injury", 3: "Specialist Training", 4: "Explosion", 5: "Protection Racket", 6: "Bureaucracy", 7: "Life Event", 8: "Drone Operations", 9: "Strike", 10: "Investment", 11: "Cyberterrorism", 12: "Advancement" },
+    eventDetails: {
+      2: "Injury: roll on the Injury table.",
+      3: "Specialist Training: gain Computer, Science, Admin, or Demolitions.",
+      4: "Explosion: roll Zero-G 8+. Success gains Demolitions; failure requires an Injury roll.",
+      5: "Protection Racket: pay and lose one benefit, or resist with Gun Combat 8+ or Melee Combat 8+. Success gains Streetwise and a pirate Enemy; failure requires an Injury roll.",
+      6: "Bureaucracy: gain Admin.",
+      7: "Life Event: roll on the Life Events table.",
+      8: "Drone Operations: roll Computer 8+ to gain an extra benefit roll.",
+      9: "Strike: support the strike to gain a union Contact and management Enemy; scab to gain an extra benefit and a union Enemy.",
+      10: "Investment: roll Admin 8+ to gain an extra benefit roll.",
+      11: "Cyberterrorism: roll Gun Combat 8+ or Computer 8+. Success gains Computer 1; failure requires an Injury roll.",
+      12: "Advancement: gain one rank and one free skill level."
+    }
   },
   Colonist: {
     service: ["Survival", "Repair", "Jack of All Trades", "Animals", "Driving", "Carousing"],
     specialist: ["Liaison", "Melee Combat", "Grav Vehicles", "Gun Combat", "Leadership", "Recon"],
     advanced: ["Science", "Medicine", "Computer", "Admin", "Aircraft", "Watercraft"],
     rankSkills: { 2: ["Admin"], 4: ["Liaison"] },
-    eventNames: { 2: "Injury", 3: "Friends in High Places", 4: "Xenomorphs", 5: "Crime", 6: "Growth", 7: "Life Event", 8: "Hard Work", 9: "Colonial Strife", 10: "Industrial Accident", 11: "Underground Politics", 12: "Advancement" }
+    cashBenefits: [1000, 5000, 5000, 5000, 10000, 20000],
+    materialBenefits: ["Low Passage", "+1 INT", "Weapon", "Mid Passage", "Contact", "High Passage"],
+    eventNames: { 2: "Injury", 3: "Friends in High Places", 4: "Xenomorphs", 5: "Crime", 6: "Growth", 7: "Life Event", 8: "Hard Work", 9: "Colonial Strife", 10: "Industrial Accident", 11: "Underground Politics", 12: "Advancement" },
+    eventDetails: {
+      2: "Injury: roll on the Injury table.",
+      3: "Friends in High Places: gain a senior corporate or government official as a Contact.",
+      4: "Xenomorphs: roll Gun Combat 8+ or Science 8+ to avoid Injury. Success also gains Survival 1.",
+      5: "Crime: avoid the gang and gain its leader as an Enemy, or join and roll Admin 8+, Stealth 8+, or Streetwise 8+. Success gains an extra benefit; failure sends you to Prison.",
+      6: "Growth: gain DM+2 on one benefit roll.",
+      7: "Life Event: roll on the Life Events table.",
+      8: "Hard Work: gain Admin, Computer, or Repair.",
+      9: "Colonial Strife: join the rebels to gain Gun Combat or Demolitions, then roll Gun Combat 8+ to avoid Injury; or stay out of the violence and gain no skill.",
+      10: "Industrial Accident: roll Repair 8+ or Science 8+. Success gains a Contact in colonial administration; failure loses one benefit.",
+      11: "Underground Politics: turn in the movement to gain a benefit and its leader as an Enemy, or join and roll Demolitions 8+, Stealth 8+, or Streetwise 8+. Success gains a Contact; failure sends you to Prison.",
+      12: "Advancement: gain one rank and one free skill level."
+    }
   },
   Elite: {
     service: ["Admin", "Liaison", "Carousing", "Computer", "Grav Vehicles", "Deception"],
     specialist: ["Leadership", "Melee Combat", "Athletics", "Steward", "Watercraft", "Streetwise"],
     advanced: ["Medicine", "Sciences", "Aircraft", "Animals", "Piloting", "Computer"],
     rankSkills: { 4: ["Admin"] },
-    eventNames: { 2: "Injury", 3: "Celebrity Status", 4: "Cybernetics", 5: "Inheritance", 6: "Conspiracy", 7: "Life Event", 8: "Corporate Infighting", 9: "Acclaimed Leadership", 10: "Interstellar Tour", 11: "Alliance", 12: "Advancement" }
+    cashBenefits: [2000, 10000, 20000, 40000, 50000, 100000],
+    materialBenefits: ["Contact", "+1 EDU", "+1 SOC", "High Passage", "Yacht", "Explorer's Society"],
+    eventNames: { 2: "Injury", 3: "Celebrity Status", 4: "Cybernetics", 5: "Inheritance", 6: "Conspiracy", 7: "Life Event", 8: "Corporate Infighting", 9: "Acclaimed Leadership", 10: "Interstellar Tour", 11: "Alliance", 12: "Advancement" },
+    eventDetails: {
+      2: "Injury: roll on the Injury table.",
+      3: "Celebrity Status: gain Carousing, Liaison, or Steward 1.",
+      4: "Your patrons or parents pay for Cr 10,000 worth of advanced cybernetics.",
+      5: "Inheritance: gain an extra benefit roll.",
+      6: "Conspiracy: refuse and gain an Enemy, or accept and roll Deception 8+ or Liaison 8+. Success gains Carousing, Liaison, or Deception; failure requires Admin 10+ to avoid Prison.",
+      7: "Life Event: roll on the Life Events table.",
+      8: "Corporate Infighting: support the executive to gain a Contact and an Enemy, or roll Liaison 8+ or SOC 8+ to discredit them. Success gains their rival as a Contact; failure reduces SOC by 1.",
+      9: "Acclaimed Leadership: gain an Enemy and DM+2 on your next benefit roll.",
+      10: "Interstellar Tour: gain Piloting, Animals, or Zero-G.",
+      11: "Alliance: gain a Contact and choose Leadership 1 or DM+1 on your next benefit roll.",
+      12: "Advancement: gain one rank and one free skill level."
+    }
   },
   Marine: {
     service: ["Gun Combat", "Heavy Weapons", "Athletics", "Gunnery", "Melee Combat", "Zero-G"],
     specialist: ["Carousing", "Repair", "Demolitions", "Recon", "Tactics", "Stealth"],
     advanced: ["Survival", "Admin", "Computer", "Piloting", "Medicine", "Engineering"],
     rankSkills: { 1: ["Leadership"], 3: ["Tactics"] },
-    eventNames: { 2: "Injury", 3: "Special Forces", 4: "Advanced Training", 5: "Cybernetics", 6: "Counterterrorism", 7: "Life Event", 8: "Bug Hunt", 9: "Labor Dispute", 10: "Boarding Action", 11: "Political Ally", 12: "Advancement" }
+    cashBenefits: [1000, 5000, 5000, 10000, 20000, 50000],
+    materialBenefits: ["+1 EDU", "Weapon", "Mid Passage", "+1 SOC", "High Passage", "Explorer's Society"],
+    eventNames: { 2: "Injury", 3: "Special Forces", 4: "Advanced Training", 5: "Cybernetics", 6: "Counterterrorism", 7: "Life Event", 8: "Bug Hunt", 9: "Labor Dispute", 10: "Boarding Action", 11: "Political Ally", 12: "Advancement" },
+    eventDetails: {
+      2: "Injury: roll on the Injury table.",
+      3: "Special Forces: roll END 8+. Success gains Computer, Demolitions, or Recon; failure gives DM-1 to one benefit roll.",
+      4: "Advanced Training: roll EDU 8+ to increase any skill you already have by one level.",
+      5: "The Corps pays for Cr 10,000 worth of advanced cybernetics.",
+      6: "Counterterrorism: roll Gun Combat 8+ or Stealth 8+. Success gives DM+4 to your next benefit roll; failure requires an Injury roll.",
+      7: "Life Event: roll on the Life Events table.",
+      8: "Bug Hunt: roll Gun Combat 8+. Success gains Animals or Survival; failure requires an Injury roll.",
+      9: "Labor Dispute: avoid bloodshed to gain the union leader as a Contact but lose the after-action bonus; or attack to gain an extra benefit and an Enemy.",
+      10: "Boarding Action: roll Melee Combat 8+ or Gun Combat 8+. Success gains Zero-G, Tactics, or Leadership; failure requires an Injury roll.",
+      11: "Political Ally: gain DM+2 on one benefit roll and a Contact.",
+      12: "Advancement: gain one rank and one free skill level."
+    }
   },
   Merchant: {
     service: ["Steward", "Repair", "Liaison", "Carousing", "Admin", "Zero-G"],
     specialist: ["Gun Combat", "Melee Combat", "Piloting", "Gunnery", "Streetwise", "Stealth"],
     advanced: ["Medicine", "Science", "Survival", "Grav Vehicles", "Engineering", "Computers"],
     rankSkills: { 1: ["Leadership"], 4: ["Pilot"] },
-    eventNames: { 2: "Injury", 3: "Cybernetics", 4: "Smuggler", 5: "Risky Business", 6: "Good Deal", 7: "Life Event", 8: "Legal Trouble", 9: "Advanced Training", 10: "Pirate Raid", 11: "Xenomorphs", 12: "Advancement" }
+    cashBenefits: [2000, 10000, 20000, 30000, 40000, 50000],
+    materialBenefits: ["Low Passage", "+1 EDU", "Weapon", "Contact", "High Passage", "Trader"],
+    eventNames: { 2: "Injury", 3: "Cybernetics", 4: "Smuggler", 5: "Risky Business", 6: "Good Deal", 7: "Life Event", 8: "Legal Trouble", 9: "Advanced Training", 10: "Pirate Raid", 11: "Xenomorphs", 12: "Advancement" },
+    eventDetails: {
+      2: "Injury: roll on the Injury table.",
+      3: "A good trade deal or corporate favor earns Cr 6,000 worth of cybernetic implants.",
+      4: "Smuggler: accept and roll Admin 8+ or Streetwise 8+. Success gains a level of the skill rolled and an extra benefit; failure gains an Enemy.",
+      5: "Risky Business: risk any number of benefits and roll Admin 8+ or Streetwise 8+. Success gains half the risked benefits (round up); failure loses the risked benefits. Either way, gain a level of the skill rolled.",
+      6: "Good Deal: gain DM+1 on a benefit roll.",
+      7: "Life Event: roll on the Life Events table.",
+      8: "Legal Trouble: roll Admin 8+. Success gains Admin or Liaison; failure sends you to Prison next term.",
+      9: "Advanced Training: roll EDU 8+ to gain Admin, Engineering, Computer, Piloting, or Zero-G.",
+      10: "Pirate Raid: roll Gun Combat 8+, Gunnery 8+, or DEX 10+. Success gains an extra benefit; failure requires an Injury roll.",
+      11: "Xenomorphs: roll Gun Combat 8+ or Melee Combat 8+ to avoid Injury. Success also gains Survival 1.",
+      12: "Advancement: gain one rank and one free skill level."
+    }
   },
   Navy: {
     service: ["Zero-G", "Repair", "Computers", "Gunnery", "Gun Combat", "Athletics"],
@@ -58,34 +163,109 @@ const CAREER_DATA = {
     advanced: ["Science", "Admin", "Medicine", "Tactics", "Jack of All Trades", "Liaison"],
     rankSkills: { 1: ["Leadership"], 3: ["Tactics"] },
     rankAttributes: { 6: "SOC +1" },
-    eventNames: { 2: "Injury", 3: "Gambling Ring", 4: "Cybernetics", 5: "Ship Destroyed", 6: "Advanced Training", 7: "Life Event", 8: "Naval Battle", 9: "Mutiny", 10: "Xenomorphs", 11: "Electronic Warfare", 12: "Advancement" }
+    cashBenefits: [1000, 5000, 5000, 10000, 20000, 50000],
+    materialBenefits: ["Low Passage", "+1 EDU", "Weapons", "Mid Passage", "+1 SOC", "High Passage"],
+    eventNames: { 2: "Injury", 3: "Gambling Ring", 4: "Cybernetics", 5: "Ship Destroyed", 6: "Advanced Training", 7: "Life Event", 8: "Naval Battle", 9: "Mutiny", 10: "Xenomorphs", 11: "Electronic Warfare", 12: "Advancement" },
+    eventDetails: {
+      2: "Injury: roll on the Injury table.",
+      3: "Gambling Ring: optionally risk a benefit and roll Carousing 8+ or Streetwise 8+. Success gains an extra benefit; failure loses the risked benefit.",
+      4: "The Navy pays for Cr 10,000 worth of advanced cybernetics.",
+      5: "Ship Destroyed: try to save crewmates with DEX 8+ or Repair 8+. Success gains a Contact and DM+2 on a benefit roll; failure requires an Injury roll. Saving yourself avoids risk but grants no benefit.",
+      6: "Advanced Training: roll EDU 8+ to increase a skill you already have by one level.",
+      7: "Life Event: roll on the Life Events table.",
+      8: "Naval Battle: roll Gunnery 8+ or Piloting 8+. Success gains Computer, Gunnery, Engineering, or Piloting; failure requires an Injury roll.",
+      9: "Mutiny: gain an Enemy among the escaped mutineers and DM+2 on one benefit roll.",
+      10: "Xenomorphs: roll Gun Combat 8+ or Melee Combat 8+ to avoid Injury. Success also gains Zero-G 1.",
+      11: "Electronic Warfare: gain Computer 1.",
+      12: "Advancement: gain one rank and one free skill level."
+    }
   },
   Pirate: {
     service: ["Streetwise", "Repair", "Gun Combat", "Melee Combat", "Zero-G", "Recon"],
     specialist: ["Deception", "Carousing", "Piloting", "Tactics", "Demolitions", "Gunnery"],
     advanced: ["Liaison", "Engineering", "Jack of All Trades", "Computer", "Medicine", "Admin"],
     rankSkills: { 2: ["Pilot"], 5: ["Leadership"] },
-    eventNames: { 2: "Injury", 3: "Gambling Ring", 4: "Smuggling", 5: "Cybernetics", 6: "Colonial Raid", 7: "Life Event", 8: "Prize Catch", 9: "Naval Battle", 10: "Yarrr!", 11: "Stranded", 12: "Advancement" }
+    cashBenefits: [1000, 5000, 10000, 20000, 40000, 80000],
+    materialBenefits: ["+1 INT", "Weapon", "High Passage", "+1 SOC", "High Passage", "Corsair"],
+    eventNames: { 2: "Injury", 3: "Gambling Ring", 4: "Smuggling", 5: "Cybernetics", 6: "Colonial Raid", 7: "Life Event", 8: "Prize Catch", 9: "Naval Battle", 10: "Yarrr!", 11: "Stranded", 12: "Advancement" },
+    eventDetails: {
+      2: "Injury: roll on the Injury table.",
+      3: "Gambling Ring: optionally risk a benefit and roll Carousing 8+ or Streetwise 8+. Success gains an extra benefit; failure loses the risked benefit.",
+      4: "Smuggling: roll Deception 8+ or Streetwise 8+. Success gains an extra benefit; failure sends you to Prison.",
+      5: "Your bosses pay for Cr 6,000 worth of advanced cybernetics.",
+      6: "Colonial Raid: roll Recon 8+ or Liaison 8+ to locate loot. Success gains an extra benefit.",
+      7: "Life Event: roll on the Life Events table.",
+      8: "Prize Catch: roll Zero-G 8+ or Gun Combat 8+. Success gains an extra benefit; failure requires an Injury roll.",
+      9: "Naval Battle: roll Gunnery 8+ or Piloting 8+. Success gains Computer, Gunnery, Engineering, or Piloting; failure requires an Injury roll.",
+      10: "Yarrr!: gain a famous pirate as a Contact.",
+      11: "Stranded: roll END 8+. Success gains Survival 1; failure requires an Injury roll.",
+      12: "Advancement: gain one rank and one free skill level."
+    }
   },
   Rogue: {
     service: ["Streetwise", "Recon", "Gun Combat", "Deception", "Stealth", "Carousing"],
     specialist: ["Melee Combat", "Liaison", "Athletics", "Admin", "Repair"],
     advanced: ["Survival", "Jack of All Trades", "Engineering", "Medicine", "Tactics", "Computers"],
     rankSkills: { 2: ["Gun Combat"] },
-    eventNames: { 2: "Injury", 3: "Rat!", 4: "Cybernetics", 5: "Hacker", 6: "Caught", 7: "Life Event", 8: "Heist", 9: "Gang War", 10: "Gambling Ring", 11: "Mentor", 12: "Advancement" }
+    cashBenefits: [1000, 5000, 5000, 10000, 20000, 30000],
+    materialBenefits: ["Low Passage", "+1 INT", "Weapon", "Contact", "Weapon", "Mid Passage"],
+    eventNames: { 2: "Injury", 3: "Rat!", 4: "Cybernetics", 5: "Hacker", 6: "Caught", 7: "Life Event", 8: "Heist", 9: "Gang War", 10: "Gambling Ring", 11: "Mentor", 12: "Advancement" },
+    eventDetails: {
+      2: "Injury: roll on the Injury table.",
+      3: "Rat!: inform on a rival to gain an extra benefit and an Enemy, or keep quiet and gain them as a Contact.",
+      4: "Your boss pays for Cr 6,000 worth of advanced cybernetics.",
+      5: "Hacker: roll Computer 8+. Success gains an extra benefit; failure sends you to Prison.",
+      6: "Caught: roll Admin 8+ to avoid Prison, or lose one benefit to gain the lawyer as a Contact.",
+      7: "Life Event: roll on the Life Events table.",
+      8: "Heist: roll Computer 8+, Stealth 8+, or Streetwise 8+. Success gains an extra benefit; failure sends you to Prison.",
+      9: "Gang War: roll Gun Combat 8+ or Melee Combat 8+. Success gains Streetwise 1; failure requires an Injury roll. Gain a rival-gang Enemy either way.",
+      10: "Gambling Ring: optionally risk a benefit and roll Carousing 8+ or Streetwise 8+. Success gains an extra benefit; failure loses the risked benefit.",
+      11: "Mentor: gain a famous criminal gang boss as a Contact.",
+      12: "Advancement: gain one rank and one free skill level."
+    }
   },
   Scholar: {
     service: ["Admin", "Computer", "Medicine", "Liaison", "Investigation", "Science"],
     specialist: ["Survival", "Repair", "Carousing", "Engineering", "Jack of All Trades", "Medicine"],
     advanced: ["Piloting", "Zero-G", "Animals", "Recon", "Athletics", "Leadership"],
     rankSkills: { 3: ["Liaison"] },
-    eventNames: { 2: "Injury", 3: "Cybernetics", 4: "Breakthrough", 5: "Field Work", 6: "Immoral Research", 7: "Life Event", 8: "Confidential Project", 9: "Plagiarism", 10: "Talent Grab", 11: "Mentor", 12: "Advancement" }
+    cashBenefits: [1000, 5000, 10000, 20000, 20000, 50000],
+    materialBenefits: ["Contact", "+1 EDU", "+1 INT", "Mid Passage", "+1 SOC", "Research Vessel"],
+    eventNames: { 2: "Injury", 3: "Cybernetics", 4: "Breakthrough", 5: "Field Work", 6: "Immoral Research", 7: "Life Event", 8: "Confidential Project", 9: "Plagiarism", 10: "Talent Grab", 11: "Mentor", 12: "Advancement" },
+    eventDetails: {
+      2: "Injury: roll on the Injury table.",
+      3: "Your academic institute pays for Cr 6,000 worth of advanced cybernetics.",
+      4: "Breakthrough: gain DM+2 on one benefit roll.",
+      5: "Field Work: gain Survival or Repair 1.",
+      6: "Immoral Research: accept to gain Science, Deception, or Medicine; refuse to gain no skill; or blow the whistle and gain the project lead as an Enemy.",
+      7: "Life Event: roll on the Life Events table.",
+      8: "Confidential Project: keep the secret and gain Science, Liaison, or Medicine; or sell the results for an extra benefit and gain the organization as an Enemy.",
+      9: "Plagiarism: exploit the opportunity to gain an extra benefit and an Enemy, or refuse and gain nothing.",
+      10: "Talent Grab: escape and roll DEX 8+ to avoid Injury, or change employers for an extra benefit and an Enemy.",
+      11: "Mentor: gain a famous academic as a Contact.",
+      12: "Advancement: gain one rank and one free skill level."
+    }
   },
   Scout: {
     service: ["Piloting", "Repair", "Computer", "Gun Combat", "Zero-G", "Survival"],
     specialist: ["Gunnery", "Athletics", "Recon", "Science", "Investigation", "Stealth"],
     advanced: ["Admin", "Grav Vehicles", "Medicine", "Tactics", "Engineering", "Jack of All Trades"],
     rankSkills: { 3: ["Science"] },
-    eventNames: { 2: "Injury", 3: "Ambushed", 4: "Cybernetics", 5: "Survey Duty", 6: "Exemplary Service", 7: "Deep Space Travel", 8: "Life Event", 9: "Rescue Mission", 10: "Xenomorphs", 11: "Courier Duty", 12: "Bonanza" }
+    cashBenefits: [1000, 5000, 10000, 10000, 20000, 50000],
+    materialBenefits: ["Low Passage", "+1 INT", "Weapon", "Mid Passage", "Space Suit", "Scout Ship"],
+    eventNames: { 2: "Injury", 3: "Ambushed", 4: "Cybernetics", 5: "Survey Duty", 6: "Exemplary Service", 7: "Deep Space Travel", 8: "Life Event", 9: "Rescue Mission", 10: "Xenomorphs", 11: "Courier Duty", 12: "Bonanza" },
+    eventDetails: {
+      2: "Injury: roll on the Injury table.",
+      3: "Ambushed: run and roll Piloting 8+ to escape, or fight and roll Gunnery 8+. A successful fight grants DM+1 on one benefit roll. Failure in either case requires an Injury roll.",
+      4: "Your employers pay for Cr 6,000 worth of advanced cybernetics.",
+      5: "Survey Duty: gain Animals, Admin, or Science.",
+      6: "Exemplary Service: gain DM+1 on one benefit roll.",
+      7: "Deep Space Travel: gain Engineering, Computer, Piloting, or Zero-G.",
+      8: "Life Event: roll on the Life Events table.",
+      9: "Rescue Mission: roll Engineering 8+ or Medicine 8+. Success gains a level in the skill rolled and a Contact; failure gains an Enemy.",
+      10: "Xenomorphs: roll Gun Combat 8+ or Melee Combat 8+ to avoid Injury. Success also gains Survival 1.",
+      11: "Courier Duty: gain Liaison, Steward, or a high-ranking megacorporation Contact.",
+      12: "Bonanza: gain an extra benefit roll and one free skill level."
+    }
   }
 };
