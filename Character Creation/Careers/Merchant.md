@@ -31,6 +31,10 @@ You were an independent spacefaring trader or worked for an interstellar corpora
 
 ## Merchant Events
 
+## Merchant Events
+
+### Merchant Events Table
+
 | 2D | Event |
 | :--- | :--- |
 | 2 | **Injury.** Roll on the Injury table. |
@@ -40,4 +44,7 @@ You were an independent spacefaring trader or worked for an interstellar corpora
 | 6 | **Good Deal.** You make a good deal on some merchandise. Gain DM+1 on a Benefit roll. |
 | 7 | **Life Event.** Roll on the Life Event table. |
 | 8 | **Legal Trouble.** You are caught up in a legal battle. Throw Admin 8+. If you succeed, gain one of Admin, or Liaison. If you fail, you must spend next term in Prison. |
-| 9 | **Advanced Training.** You receive advanced training. Throw EDU 8+. If you succeed, gain a level of Admin, Engineering,
+| 9 | **Advanced Training.** You receive advanced training. Throw EDU 8+. If you succeed, gain a level of Admin, Engineering, Computer, Piloting, or Zero-G. |
+| 10 | **Pirate Raid.** Pirates or privateers attack your ship. Throw Gun Combat 8+, Gunnery 8+ or Dexterity 10+. If you fail, roll on the Injury table. If you succeed, gain another Benefit. |
+| 11 | **Xenomorphs!** You encounter deadly planetary, or space born organisms. Throw Gun Combat 8+ or Melee Combat 8+ to avoid a roll on the Injury table. If you succeed, gain a level in Survival. |
+| 12 | **Advancement.** Your wheeling and dealing pay off big-time. You gain a rank, and a free skill level. |

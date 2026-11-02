@@ -24,7 +24,11 @@ Cost: Cr5000/dose
 Tech Level: TL15   
 
 Panacea: Represents a wide variety of vaccines, antitoxins, antibiotics, and other pharmaceuticals. Panacea allows a character with at least Medicine 1 to neutralize a disease or poison on a throw of Medicine/EDU 8+. 
-The cost of any drug is at the Referee’s discretion. 
-Advanced TL11+ medications cost ten times as much but grant Advantage on the Medicine throw.   
+The cost of any drug is at the Referee’s discretion.  
 Cost: Cr50+/dose   
 Tech Level: TL5   
+
+Panacea (Advanced): Represents a wide variety of vaccines, antitoxins, antibiotics, and other pharmaceuticals. Panacea allows a character with at least Medicine 1 to neutralize a disease or poison on a throw of Medicine/EDU 8+. You have advantage on the throw.
+The cost of any drug is at the Referee’s discretion.  
+Cost: Cr500+/dose   
+Tech Level: TL11   

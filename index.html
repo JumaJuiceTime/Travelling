@@ -7,6 +7,7 @@
     <title>Wayfarer — Cepheus Deluxe Character Desk</title>
     <link rel="stylesheet" href="styles.css">
     <script src="built-in-items.js" defer></script>
+    <script src="career-data.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -222,7 +223,7 @@
             </select>
           </label>
           <label class="field">
-            <span>Current career</span>
+            <span>Current / most recent career</span>
             <input id="character-career" name="career" list="career-options" maxlength="80" placeholder="e.g. Scout">
             <datalist id="career-options">
               <option value="Agent"></option>
@@ -263,6 +264,13 @@
           <label class="field attribute-field"><span>EDU</span><input name="edu" type="number" min="0" max="99" required inputmode="numeric" aria-label="Education"></label>
           <label class="field attribute-field"><span>SOC</span><input name="soc" type="number" min="0" max="99" required inputmode="numeric" aria-label="Social Standing"></label>
         </div>
+        <p class="characteristic-error" id="characteristic-error" role="alert" hidden></p>
+        <div class="derived-characteristics" aria-live="polite">
+          <span>Stamina <strong id="derived-stamina">0</strong></span>
+          <span>Lifeblood <strong id="derived-lifeblood">0</strong></span>
+          <span>Skill ranks <strong id="derived-skill-ranks">0 / 0</strong></span>
+          <small>Stamina is END plus Athletics level; without Athletics, it equals END. Lifeblood is twice Stamina.</small>
+        </div>
 
         <section class="generation-section" aria-labelledby="generation-title">
           <div class="form-section-heading">
@@ -272,10 +280,7 @@
             </div>
           </div>
           <div class="form-grid generation-settings">
-            <label class="field">
-              <span>Career terms</span>
-              <input id="career-terms" type="number" min="0" max="7" value="0" inputmode="numeric">
-            </label>
+            <input id="career-terms" type="hidden" value="1">
             <label class="field">
               <span>Bonus benefit rolls</span>
               <input id="bonus-benefits" type="number" min="0" max="20" value="0" inputmode="numeric">
@@ -290,8 +295,41 @@
               </select>
             </label>
           </div>
-          <p class="section-helper generation-rule-note">Use the PDF's career tables to resolve events and benefits; record the results and any skill gains below.</p>
+          <p class="section-helper generation-rule-note">Complete each term in order. Each career event is rolled automatically once its career is selected, and the result appears with that term.</p>
+          <p class="section-helper generation-rule-note">Career skill selections below follow the selected career tables. They are added to the Skills field when saved; additional skills and final skill-cap adjustments can still be recorded there.</p>
+          <p class="generation-progress" id="career-progress-summary" aria-live="polite"></p>
+          <p class="career-progress-error" id="career-progress-error" role="alert" hidden></p>
+          <div id="career-skill-rows" class="generation-rows"></div>
           <div id="term-event-rows" class="generation-rows"></div>
+          <div class="career-progression-actions" id="career-progression-actions">
+            <button class="button button-quiet" id="muster-out-button" type="button">Muster out</button>
+            <button class="button button-quiet" id="switch-career-button" type="button">Switch careers</button>
+            <button class="button button-primary" id="continue-career-button" type="button">Continue for another term</button>
+          </div>
+          <div class="career-switch-picker" id="career-switch-picker" hidden>
+            <p class="section-helper field-wide">A new career starts at Rank 0 with one Service skill at level 0. Military-to-military moves retain rank. Each career change reduces mustering-out benefits by one roll.</p>
+            <label class="field" for="next-career-select">
+              <span>New career</span>
+              <select id="next-career-select">
+                <option value="">Choose a career</option>
+                <option>Agent</option>
+                <option>Army</option>
+                <option>Belter</option>
+                <option>Colonist</option>
+                <option>Elite</option>
+                <option>Marine</option>
+                <option>Merchant</option>
+                <option>Navy</option>
+                <option>Pirate</option>
+                <option>Rogue</option>
+                <option>Scholar</option>
+                <option>Scout</option>
+              </select>
+            </label>
+            <button class="button button-primary" id="confirm-career-switch-button" type="button">Start next term</button>
+            <button class="button button-quiet" id="cancel-career-switch-button" type="button">Cancel</button>
+          </div>
+          <p class="section-helper generation-rule-note" id="mustered-out-note" hidden>Mustering out is selected. Career benefits and traits are now available below.</p>
           <div id="aging-rows" class="generation-rows"></div>
           <div id="benefit-rows" class="generation-rows"></div>
           <div id="trait-rows" class="generation-rows"></div>
@@ -316,7 +354,7 @@
           <div class="form-section-heading">
             <div>
               <p class="eyebrow">CARRIED ITEMS</p>
-              <p class="section-helper" id="inventory-title">Add equipment from the item catalog and track major-item encumbrance.</p>
+              <p class="section-helper" id="inventory-title">Add equipment and cybernetic implants from the item catalog; track major-item load and Cybernetic Points.</p>
             </div>
           </div>
           <div class="inventory-add-row">
@@ -369,6 +407,20 @@
               <option>Weapons</option>
               <option>Other</option>
             </select>
+          </label>
+          <label class="field cybernetic-item-field" id="item-cyber-grade-field" hidden>
+            <span>Cybernetic grade</span>
+            <select id="item-cyber-grade" name="cyberGrade">
+              <option value="">Not specified</option>
+              <option>A</option>
+              <option>B</option>
+              <option>C</option>
+              <option>R</option>
+            </select>
+          </label>
+          <label class="field cybernetic-item-field" id="item-cyber-points-field" hidden>
+            <span>Cybernetic points</span>
+            <input id="item-cyber-points" name="cyberPoints" type="number" min="0" max="12" step="1" placeholder="Grade default">
           </label>
           <label class="field">
             <span>Tech level</span>
