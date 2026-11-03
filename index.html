@@ -9,6 +9,7 @@
     <script src="built-in-items.js" defer></script>
     <script src="career-data.js" defer></script>
     <script src="trait-data.js" defer></script>
+    <script src="skills-data.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -304,7 +305,7 @@
             </label>
           </div>
           <p class="section-helper generation-rule-note">Complete each term in order. Roll each career event when ready; its result and effects will appear in the event box.</p>
-          <p class="section-helper generation-rule-note">Career skill selections below follow the selected career tables. They are added to the Skills field when saved; additional skills and final skill-cap adjustments can still be recorded there.</p>
+          <p class="section-helper generation-rule-note">Career skill selections are tracked automatically. Event and benefit skill gains are added to the same skill sheet.</p>
           <p class="generation-progress" id="career-progress-summary" aria-live="polite"></p>
           <p class="career-progress-error" id="career-progress-error" role="alert" hidden></p>
           <div id="career-skill-rows" class="generation-rows"></div>
@@ -354,16 +355,37 @@
           <div id="character-sheet-record-content" class="sheet-record-content"></div>
         </section>
 
+        <section class="generation-section skill-management-section" aria-labelledby="skills-title">
+          <div class="form-section-heading">
+            <div>
+              <p class="eyebrow">SKILLS</p>
+              <p class="section-helper" id="skills-title">Career and homeworld skills are tracked automatically. Select a skill to set up a check using its rank, a task characteristic, and any applicable trait.</p>
+            </div>
+          </div>
+          <p class="skill-cap-status" id="skill-cap-status" aria-live="polite"></p>
+          <details class="skill-group" id="proficient-skills-group" open>
+            <summary><span>Proficient skills</span><strong id="proficient-skill-count">0</strong></summary>
+            <div class="skill-list" id="proficient-skill-list"></div>
+          </details>
+          <details class="skill-group" id="remaining-skills-group">
+            <summary><span>Remaining skills</span><strong id="remaining-skill-count">0</strong></summary>
+            <p class="section-helper skill-group-helper">Level 0 skills avoid the unskilled penalty; skills without training normally take DM−3. Athletics and characteristic-only throws do not take that penalty.</p>
+            <div class="skill-list" id="remaining-skill-list"></div>
+          </details>
+          <div class="unskilled-check">
+            <label class="field"><span>Unlisted skill check</span>
+              <input id="custom-unskilled-skill" maxlength="60" placeholder="Skill or task">
+            </label>
+            <button class="button button-quiet" id="roll-custom-unskilled-button" type="button">Set up unskilled check</button>
+          </div>
+          <div class="skill-check-panel" id="skill-check-panel" hidden></div>
+        </section>
+
         <div class="form-grid form-grid-notes">
           <label class="field field-wide">
             <span>Career history</span>
             <textarea id="character-history" name="history" rows="3" maxlength="2000" placeholder="Record careers, terms, and notable turning points..."></textarea>
             <small class="field-helper" id="career-history-helper">Record careers, terms, and notable turning points.</small>
-          </label>
-          <label class="field">
-            <span>Skills</span>
-            <textarea id="character-skills" name="skills" rows="4" maxlength="2000" placeholder="One skill per line"></textarea>
-            <small class="field-helper" id="skills-helper">Career and homeworld awards are added to these manually recorded skills when saved.</small>
           </label>
           <label class="field">
             <span>Notes</span>

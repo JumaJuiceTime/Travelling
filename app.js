@@ -61,6 +61,9 @@ const agingRows = document.querySelector("#aging-rows");
 const benefitRows = document.querySelector("#benefit-rows");
 const traitRows = document.querySelector("#trait-rows");
 const careerSkillRows = document.querySelector("#career-skill-rows");
+const proficientSkillList = document.querySelector("#proficient-skill-list");
+const remainingSkillList = document.querySelector("#remaining-skill-list");
+const skillCheckPanel = document.querySelector("#skill-check-panel");
 const itemsView = document.querySelector("#items-view");
 const charactersView = document.querySelector("#characters-view");
 const itemGrid = document.querySelector("#item-grid");
@@ -82,6 +85,9 @@ let careerTrackingEnabled = true;
 let trackedCareerName = "";
 let careerMusteredOut = false;
 let editingCharacterId = "";
+let currentSkillLevels = new Map();
+let generationSkillAdjustments = new Map();
+let activeSkillCheck = null;
 let storageError = null;
 let itemStorageError = null;
 
@@ -232,8 +238,17 @@ function isValidGeneration(generation) {
     && (entry.injury === undefined || typeof entry.injury === "boolean")
     && (entry.injuryRoll === undefined || isValidRoll(entry.injuryRoll, 2, 12))
     && (entry.injuryDetailRoll === undefined || isValidRoll(entry.injuryDetailRoll, 1, 6))
+    && (entry.skillAwards === undefined || (Array.isArray(entry.skillAwards) && entry.skillAwards.every(isText)))
+    && (entry.skillAwardCheckIndex === undefined || entry.skillAwardCheckIndex === null
+      || (Number.isInteger(entry.skillAwardCheckIndex) && entry.skillAwardCheckIndex >= 0))
+    && (entry.skillAwardRequiresSuccess === undefined || typeof entry.skillAwardRequiresSuccess === "boolean")
+    && (!entry.skillAwardRequiresSuccess
+      || (Number.isInteger(entry.skillAwardCheckIndex) && Array.isArray(entry.checks) && entry.checks[entry.skillAwardCheckIndex] !== undefined))
+    && (entry.skillChoicesLocked === undefined || typeof entry.skillChoicesLocked === "boolean")
     && (entry.checks === undefined || (Array.isArray(entry.checks) && entry.checks.every((check) => check
       && isText(check.skill)
+      && (check.kind === undefined || ["skill", "characteristic"].includes(check.kind))
+      && (check.skillLevel === undefined || (Number.isInteger(check.skillLevel) && check.skillLevel >= 0 && check.skillLevel <= 5))
       && isValidRoll(check.roll, 2, 12)
       && Number.isInteger(check.dm)
       && check.dm >= -20
@@ -279,6 +294,12 @@ function isValidGeneration(generation) {
     && (generation.trackedCareer === undefined || isText(generation.trackedCareer))
     && (generation.musteredOut === undefined || typeof generation.musteredOut === "boolean")
     && (generation.ironMan === undefined || typeof generation.ironMan === "boolean")
+    && (generation.skillAdjustments === undefined || (Array.isArray(generation.skillAdjustments)
+      && generation.skillAdjustments.every((entry) => entry
+        && isText(entry.skill)
+        && Number.isInteger(entry.delta)
+        && entry.delta >= -5
+        && entry.delta <= 5)))
     && (generation.careerSkills === undefined
       || (Array.isArray(generation.careerSkills)
         && generation.careerSkills.length === generation.terms
@@ -302,6 +323,10 @@ function escapeHtml(value) {
     "\"": "&quot;",
     "'": "&#39;"
   })[character]);
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function getInitials(name) {
@@ -760,20 +785,37 @@ function getCareerEventChecks(effect) {
   };
   for (const match of effect.matchAll(checkExpression)) {
     const candidates = [...match[1].matchAll(EVENT_CHECK_PATTERN)];
-    const options = candidates.map((candidate) => ({
-      skill: candidate[1],
-      target: Number(candidate[2])
-    }));
+    const options = candidates.map((candidate) => {
+      const isCharacteristic = ATTRIBUTE_KEYS.some((key) => key.toUpperCase() === candidate[1].toUpperCase());
+      return {
+        skill: isCharacteristic ? candidate[1].toUpperCase() : canonicalSkillName(candidate[1]),
+        target: Number(candidate[2]),
+        kind: isCharacteristic ? "characteristic" : "skill",
+        sourceStart: match.index + match[0].indexOf(match[1]) + candidate.index,
+        sourceEnd: match.index + match[0].indexOf(match[1]) + candidate.index + candidate[0].length
+      };
+    });
+    options.forEach((option, optionIndex) => {
+      if (optionIndex >= candidates.length - 1) return;
+      const afterOption = match[1].slice(candidates[optionIndex].index + candidates[optionIndex][0].length, candidates[optionIndex + 1].index);
+      const directedOutcome = afterOption.match(/^\s*to\s+([^,.;]+?)(?=\s*,?\s+or\b|$)/i);
+      if (directedOutcome) option.successOutcome = directedOutcome[1].trim();
+    });
     if (!options.length) continue;
 
     const afterCheck = match[1].slice(candidates.at(-1).index + candidates.at(-1)[0].length).trim();
     let successOutcome = getOutcome(afterCheck, true);
     if (!successOutcome && /^to\b/i.test(afterCheck)) {
-      successOutcome = afterCheck.replace(/^to\s+/i, "").replace(/,\s*(?:or|and)\b.*$/i, "").trim();
+      successOutcome = afterCheck.replace(/^to\s+/i, "").replace(/\s*,?\s+or\b[\s\S]*$/i, "").trim();
     }
     successOutcome ||= getOutcome(effect, true);
     let failureOutcome = getOutcome(afterCheck, false) || getOutcome(effect, false);
     if (failureOutcome) failureOutcome = failureOutcome.replace(/^in either case\s+/i, "");
+    const eitherWayMatch = effect.match(/\beither way\s*(?:,|:)?\s*([^.;]+)/i);
+    const inEitherCaseMatch = effect.match(/\bin either case\s*(?:,|:)?\s*([^.;]+)/i);
+    const inEitherCaseIsFailure = inEitherCaseMatch
+      && /\bfailure\s*$/i.test(effect.slice(0, inEitherCaseMatch.index));
+    const commonMatch = eitherWayMatch || (inEitherCaseIsFailure ? null : inEitherCaseMatch);
     if (/to avoid injury/i.test(afterCheck)) {
       failureOutcome ||= "roll on the Injury table";
       successOutcome ||= "avoid Injury";
@@ -781,22 +823,67 @@ function getCareerEventChecks(effect) {
     checks.push({
       options,
       successOutcome: successOutcome ? successOutcome.replace(/^[,:\s]+/, "") : "Event effect as described above.",
-      failureOutcome: failureOutcome ? failureOutcome.replace(/^[,:\s]+/, "") : "No separate failure effect is specified."
+      failureOutcome: failureOutcome ? failureOutcome.replace(/^[,:\s]+/, "") : "No separate failure effect is specified.",
+      commonOutcome: commonMatch?.[1]?.trim() || ""
     });
   }
-  return checks;
+  const groupedChecks = [];
+  checks.forEach((check) => {
+    const previous = groupedChecks.at(-1);
+    const lastOption = previous?.options.at(-1);
+    const firstOption = check.options[0];
+    const connector = previous && effect.slice(lastOption.sourceEnd, firstOption.sourceStart);
+    if (previous && /\bor\b/i.test(connector) && !/[.;]/.test(connector)) {
+      previous.options.at(-1).successOutcome ||= previous.successOutcome;
+      previous.options.at(-1).failureOutcome ||= previous.failureOutcome;
+      check.options[0].successOutcome ||= check.successOutcome;
+      check.options[0].failureOutcome ||= check.failureOutcome;
+      previous.options.push(...check.options);
+      previous.successOutcome ||= check.successOutcome;
+      previous.failureOutcome ||= check.failureOutcome;
+      previous.commonOutcome ||= check.commonOutcome;
+    } else {
+      groupedChecks.push(check);
+    }
+  });
+  groupedChecks.forEach((check) => {
+    check.options.forEach((option) => {
+      delete option.sourceStart;
+      delete option.sourceEnd;
+    });
+  });
+  return groupedChecks;
 }
 
-function getEventCheckResult(check, selectedSkill, roll, dm) {
+function getEventCheckResult(check, selectedSkill, roll, dm, modifiers = {}) {
   if (!roll) return "Enter the 2D6 total or roll 2D6; add the applicable DM.";
   if (!isValidManualRoll(roll, 2, 12)) return "Enter a valid 2D6 total from 2 to 12.";
   const option = check.options.find((candidate) => candidate.skill === selectedSkill) || check.options[0];
-  const total = Number(roll) + Number(dm || 0);
+  const kind = modifiers.kind || option.kind;
+  const skillLevel = Math.max(0, Number(modifiers.skillLevel || 0));
+  const characteristicDm = kind === "characteristic"
+    ? getCharacteristicDm(Number(form.elements.namedItem(option.skill.toLocaleLowerCase()).value || 0))
+    : 0;
+  const skillDm = kind === "skill" ? skillLevel : 0;
+  const total = Number(roll) + Number(dm || 0) + characteristicDm + skillDm;
   const success = total >= option.target;
-  const outcome = (success ? check.successOutcome : check.failureOutcome)
+  const outcome = (success ? option.successOutcome || check.successOutcome : option.failureOutcome || check.failureOutcome)
     .replace(/the skill (?:you )?rolled/gi, option.skill)
     .replace(/the skill you tested/gi, option.skill);
-  return `${success ? "Success" : "Failure"} · ${roll}${Number(dm) ? ` ${Number(dm) > 0 ? "+" : ""}${Number(dm)}` : ""} = ${total} vs ${option.target}+ · ${outcome}`;
+  const commonOutcome = (check.commonOutcome || "")
+    .replace(/the skill (?:you )?rolled/gi, option.skill)
+    .replace(/the skill you tested/gi, option.skill);
+  const modifiersText = [
+    characteristicDm ? `${characteristicDm > 0 ? "+" : ""}${characteristicDm} ${option.skill} DM` : "",
+    skillDm ? `+${skillDm} ${option.skill} skill` : ""
+  ].filter(Boolean).join(" ");
+  return `${success ? "Success" : "Failure"} · ${roll}${Number(dm) ? ` ${Number(dm) > 0 ? "+" : ""}${Number(dm)}` : ""}${modifiersText ? ` ${modifiersText}` : ""} = ${total} vs ${option.target}+ · ${outcome}${commonOutcome ? ` · Either way, ${commonOutcome}` : ""}`;
+}
+
+function getSelectedEventCheckSkill(row) {
+  const selectedRadio = row.querySelector("[data-event-check-skill]:checked");
+  if (selectedRadio) return selectedRadio.value;
+  return row.querySelector("select[data-event-check-skill]")?.value || row.dataset.checkSkill || "";
 }
 
 function isValidManualRoll(value, minimum, maximum) {
@@ -834,127 +921,352 @@ function getInjuryCareerDm(careerName) {
 }
 
 function getCareerAwards(generation, careerName) {
-  const awards = {};
-  const addSkill = (skill) => {
-    if (!skill) return;
-    awards[skill.toLocaleLowerCase()] = {
-      name: skill,
-      level: (awards[skill.toLocaleLowerCase()]?.level || 0) + 1
-    };
-  };
+  return getGenerationSkillRanks(generation, careerName);
+}
+
+function canonicalSkillName(name) {
+  const trimmed = String(name || "").trim();
+  if (!trimmed) return "";
+  const alias = SKILL_ALIASES[trimmed.toLocaleLowerCase()];
+  if (alias) return alias;
+  return SKILL_NAMES.find((skill) => skill.toLocaleLowerCase() === trimmed.toLocaleLowerCase()) || trimmed;
+}
+
+function getNamedSkillAwards(text) {
+  if (!/(?:gain|increase|improve|grant|award)/i.test(text)) return [];
+  const knownSkills = [...new Set([
+    ...SKILL_NAMES,
+    ...Object.values(CAREER_DATA).flatMap((career) => [...career.service, ...career.specialist, ...career.advanced])
+  ])];
+  return [...new Set(knownSkills
+    .filter((skill) => new RegExp(`\\b${escapeRegExp(skill)}\\b`, "i").test(text))
+    .map(canonicalSkillName))];
+}
+
+function addSkillRanks(skillRanks, skill, amount = 1) {
+  const name = canonicalSkillName(skill);
+  if (!name || !Number.isFinite(amount)) return;
+  const key = name.toLocaleLowerCase();
+  const current = skillRanks.get(key);
+  skillRanks.set(key, { name: current?.name || name, level: Math.max(0, (current?.level || 0) + amount) });
+}
+
+function getGenerationSkillRanks(generation, careerName, throughTerm = Number.POSITIVE_INFINITY) {
+  const ranks = new Map();
+  const add = (skill, amount = 1) => addSkillRanks(ranks, skill, amount);
+  add(generation.homeworldSkill);
   const careerSkills = generation.careerSkills || [];
+  let previousCareer = "";
   careerSkills.forEach((entry, index) => {
-    const entryCareer = entry.career || careerName;
-    const career = getCareerDefinition(entryCareer);
-    if (entry.term === 1) addSkill(entry.service);
-    entry.picks.forEach(addSkill);
+    if (index >= throughTerm) return;
+    const termCareer = entry.career || careerName;
+    const startsCareer = !previousCareer || termCareer.toLocaleLowerCase() !== previousCareer.toLocaleLowerCase();
+    if (entry.term === 1) add(entry.service);
+    else if (startsCareer && entry.service) add(entry.service, 0);
+    entry.picks.forEach((skill) => add(skill));
+    const career = getCareerDefinition(termCareer);
     if (career) {
       const attainedRank = getCareerRankAtTerm(careerSkills, index, careerName);
       const previousRank = index ? getCareerRankAtTerm(careerSkills, index - 1, careerName) : 0;
-      if (attainedRank > previousRank) (career.rankSkills[attainedRank] || []).forEach(addSkill);
+      if (attainedRank > previousRank) (career.rankSkills[attainedRank] || []).forEach((skill) => add(skill));
     }
+    const event = generation.events?.[index];
+    const eventEffect = event?.effect || getCareerEventEffect(event?.career || termCareer, Number(event?.roll));
+    if (event?.skillAwards?.length) {
+      const awardCheckIndex = event.skillAwardCheckIndex;
+      const awardCheck = Number.isInteger(awardCheckIndex) ? event.checks?.[awardCheckIndex] : null;
+      const parsedAwardCheck = Number.isInteger(awardCheckIndex)
+        ? getCareerEventChecks(eventEffect)[awardCheckIndex]
+        : null;
+      const awardCheckResult = awardCheck && parsedAwardCheck
+        ? getEventCheckResult(parsedAwardCheck, awardCheck.skill, awardCheck.roll, awardCheck.dm, {
+          skillLevel: ranks.get(canonicalSkillName(awardCheck.skill).toLocaleLowerCase())?.level || 0,
+          kind: awardCheck.kind
+        })
+        : "";
+      if (!event.skillAwardRequiresSuccess || awardCheckResult.startsWith("Success")) {
+        event.skillAwards.forEach((skill) => add(skill));
+      }
+    }
+    (event?.checks || []).forEach((check, checkIndex) => {
+      if (!check.roll) return;
+      const parsedCheck = getCareerEventChecks(eventEffect)[checkIndex];
+      if (!parsedCheck) return;
+      const result = getEventCheckResult(parsedCheck, check.skill, check.roll, check.dm, {
+        skillLevel: ranks.get(canonicalSkillName(check.skill).toLocaleLowerCase())?.level || 0,
+        kind: check.kind
+      });
+      const outcomeAwardsRolledSkill = (outcome) => /(?:gain|increase|improve)\w*[^.;]{0,50}\bskill\b[^.;]{0,30}\b(?:rolled|tested)\b/i.test(outcome);
+      const success = result.startsWith("Success");
+      const outcome = success ? parsedCheck.successOutcome : parsedCheck.failureOutcome;
+      const appliesEitherWay = /\beither way\b[^.;]{0,120}/i.test(eventEffect) && outcomeAwardsRolledSkill(eventEffect);
+      if ((success && outcomeAwardsRolledSkill(outcome)) || (!success && appliesEitherWay && outcomeAwardsRolledSkill(eventEffect))) {
+        add(check.skill);
+      }
+      if (success) {
+        const namedAwards = getNamedSkillAwards(outcome);
+        if (namedAwards.length === 1) add(namedAwards[0]);
+      }
+    });
+    if (!(event?.checks || []).length) {
+      const namedAwards = getNamedSkillAwards(eventEffect);
+      if (namedAwards.length === 1) add(namedAwards[0]);
+    }
+    previousCareer = termCareer;
   });
-  if (careerSkills.length) {
+  if (careerSkills.length && careerSkills.length <= throughTerm) {
     const finalCareerName = careerSkills.at(-1).career || careerName;
     const finalCareer = getCareerDefinition(finalCareerName);
     const finalRank = getCareerRankAtTerm(careerSkills, careerSkills.length - 1, careerName);
     const rankPurchases = (generation.benefits || []).filter((entry) => entry.table === "rank").length;
     for (let rank = finalRank + 1; rank <= Math.min(6, finalRank + rankPurchases); rank += 1) {
-      (finalCareer?.rankSkills[rank] || []).forEach(addSkill);
+      (finalCareer?.rankSkills[rank] || []).forEach((skill) => add(skill));
     }
   }
-  return awards;
+  (generation.skillAdjustments || []).forEach((entry) => add(entry.skill, entry.delta));
+  return ranks;
+}
+
+function getSkillRankBeforeEventCheck(generation, eventIndex, checkIndex, skillName) {
+  const event = generation.events?.[eventIndex];
+  if (!event) return 0;
+  const eventWithoutCheck = {
+    ...event,
+    checks: (event.checks || []).map((check, index) => index === checkIndex ? { ...check, roll: "" } : check)
+  };
+  if (event.skillAwardCheckIndex === checkIndex) {
+    eventWithoutCheck.skillAwards = [];
+    eventWithoutCheck.skillAwardCheckIndex = null;
+    eventWithoutCheck.skillAwardRequiresSuccess = false;
+  }
+  const beforeCheck = {
+    ...generation,
+    events: generation.events.map((entry, index) => index === eventIndex ? eventWithoutCheck : entry)
+  };
+  const ranks = getGenerationSkillRanks(beforeCheck, generation.trackedCareer || trackedCareerName);
+  return ranks.get(canonicalSkillName(skillName).toLocaleLowerCase())?.level || 0;
 }
 
 function getFirstTermSkillViolations(generation) {
   const firstTerm = generation.careerSkills?.[0];
   if (!firstTerm) return [];
-  const counts = new Map();
-  const add = (skill) => {
-    if (!skill) return;
-    const key = skill.toLocaleLowerCase();
-    counts.set(key, (counts.get(key) || 0) + 1);
-  };
-  add(generation.homeworldSkill);
-  add(firstTerm.service);
-  firstTerm.picks.forEach(add);
-  return [...counts.entries()].filter(([, level]) => level > 2).map(([skill]) => skill);
+  return [...getGenerationSkillRanks(generation, generation.trackedCareer || firstTerm.career).entries()]
+    .filter(([, skill]) => skill.level > 2)
+    .map(([skill]) => skill);
 }
 
-function getSkillLines(skillText) {
-  return skillText.split(/\r?\n/).map((line) => {
-    const match = line.trim().match(/^(.*?)(?:\s+(\d+))?$/);
-    if (!match || !match[1]) return null;
-    return { name: match[1].trim(), level: match[2] ? Number(match[2]) : 1 };
-  }).filter(Boolean);
-}
-
-function mergeAwardedSkills(skillLines, awards) {
-  const totals = new Map();
-  skillLines.forEach(({ name, level }) => {
-    const key = name.toLocaleLowerCase();
-    const current = totals.get(key);
-    totals.set(key, { name, level: (current?.level || 0) + level });
-  });
-  Object.values(awards).forEach(({ name, level }) => {
-    const key = name.toLocaleLowerCase();
-    const current = totals.get(key);
-    totals.set(key, { name, level: (current?.level || 0) + level });
-  });
-  return [...totals.values()].map(({ name, level }) => `${name} ${level}`).sort((a, b) => a.localeCompare(b));
-}
-
-function getManualSkillLines(character) {
-  const manual = new Map();
+function getSavedSkillRanks(character) {
+  const ranks = new Map();
   (character.skills || []).forEach((line) => {
-    const parsed = getSkillLines(line)[0];
-    if (!parsed) return;
-    const key = parsed.name.toLocaleLowerCase();
-    const current = manual.get(key);
-    manual.set(key, { name: parsed.name, level: (current?.level || 0) + parsed.level });
-  });
-  const awards = getCareerAwards(character.generation || { terms: 0 }, character.generation?.trackedCareer || character.career);
-  if (character.generation?.homeworldSkill) {
-    awards[character.generation.homeworldSkill.toLocaleLowerCase()] = {
-      name: character.generation.homeworldSkill,
-      level: (awards[character.generation.homeworldSkill.toLocaleLowerCase()]?.level || 0) + 1
-    };
-  }
-  Object.values(awards).forEach(({ name, level }) => {
+    const match = String(line).trim().match(/^(.*?)(?:\s+(\d+))?$/);
+    if (!match || !match[1]) return;
+    const name = canonicalSkillName(match[1]);
+    const level = Math.min(5, Math.max(0, Number(match[2] || 1)));
     const key = name.toLocaleLowerCase();
-    const current = manual.get(key);
-    if (!current) return;
-    const remaining = current.level - level;
-    if (remaining > 0) current.level = remaining;
-    else manual.delete(key);
+    const current = ranks.get(key);
+    ranks.set(key, { name: current?.name || name, level: (current?.level || 0) + level });
   });
-  return [...manual.values()].map(({ name, level }) => `${name} ${level}`).join("\n");
+  return ranks;
+}
+
+function serializeSkillRanks(ranks) {
+  return [...ranks.values()]
+    .map((skill) => `${skill.name} ${skill.level}`)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function getCurrentSkillRanks() {
+  if (editingCharacterId) return currentSkillLevels;
+  return getGenerationSkillRanks(readGeneration(), trackedCareerName || document.querySelector("#character-career").value.trim());
 }
 
 function updateDerivedCharacteristics() {
   const end = Number(form.elements.namedItem("end").value || 0);
-  const careerAwards = getCareerAwards(readGeneration(), trackedCareerName || document.querySelector("#character-career").value.trim());
-  const skillTotals = new Map();
-  getSkillLines(document.querySelector("#character-skills").value).forEach(({ name, level }) => {
-    const key = name.toLocaleLowerCase();
-    skillTotals.set(key, (skillTotals.get(key) || 0) + level);
-  });
-  Object.entries(careerAwards).forEach(([key, { level }]) => {
-    skillTotals.set(key, (skillTotals.get(key) || 0) + level);
-  });
-  if (homeworldSkillInput.value) {
-    const key = homeworldSkillInput.value.toLocaleLowerCase();
-    skillTotals.set(key, (skillTotals.get(key) || 0) + 1);
-  }
-  const athletics = skillTotals.get("athletics") || 0;
+  const skillRanks = getCurrentSkillRanks();
+  const athletics = skillRanks.get("athletics")?.level || 0;
   const stamina = end + athletics;
   document.querySelector("#derived-stamina").textContent = String(stamina);
   document.querySelector("#derived-lifeblood").textContent = String(stamina * 2);
-  const totalRanks = [...skillTotals.values()].reduce((total, level) => total + level, 0);
+  const totalRanks = [...skillRanks.values()].reduce((total, skill) => total + skill.level, 0);
   const skillLimit = Number(form.elements.namedItem("int").value || 0) + Number(form.elements.namedItem("edu").value || 0);
   const skillRankDisplay = document.querySelector("#derived-skill-ranks");
   skillRankDisplay.textContent = `${totalRanks} / ${skillLimit}`;
   skillRankDisplay.classList.toggle("over-limit", totalRanks > skillLimit);
+  const skillCapStatus = document.querySelector("#skill-cap-status");
+  const overLimit = totalRanks > skillLimit;
+  skillCapStatus.textContent = editingCharacterId
+    ? `${totalRanks} / ${skillLimit} skill ranks · ${overLimit ? "reduce ranks to meet the character limit" : "within INT + EDU limit"}`
+    : careerMusteredOut
+      ? `${totalRanks} / ${skillLimit} skill ranks · ${overLimit ? "reduce ranks to meet the mustering-out limit" : "within INT + EDU limit"}`
+      : `${totalRanks} skill ranks earned so far · final INT + EDU limit is applied at mustering out.`;
+  skillCapStatus.classList.toggle("over-limit", overLimit && (editingCharacterId || careerMusteredOut));
+}
+
+function getAllSkillNames(skillRanks = getCurrentSkillRanks()) {
+  const names = new Map(SKILL_NAMES.map((skill) => [skill.toLocaleLowerCase(), skill]));
+  Object.values(CAREER_DATA).forEach((career) => {
+    [...career.service, ...career.specialist, ...career.advanced].forEach((skill) => {
+      const name = canonicalSkillName(skill);
+      names.set(name.toLocaleLowerCase(), name);
+    });
+  });
+  skillRanks.forEach((skill) => names.set(skill.name.toLocaleLowerCase(), skill.name));
+  return [...names.values()].sort((a, b) => a.localeCompare(b));
+}
+
+function getSkillTraitAdvantages(skill) {
+  const traits = editingCharacterId
+    ? characters.find((character) => character.id === editingCharacterId)?.generation?.traits || []
+    : readGeneration().traits || [];
+  const available = SKILL_ADVANTAGE_TRAITS[canonicalSkillName(skill)] || [];
+  return available.filter((trait) => traits.includes(trait));
+}
+
+function renderSkillRow(skill, canAdjust, proficiency) {
+  const key = skill.name.toLocaleLowerCase();
+  const level = skill.level;
+  const advantages = getSkillTraitAdvantages(skill.name);
+  const skillLabel = level === 0 ? `${skill.name} · Level 0` : `${skill.name} · Level ${level}`;
+  const adjustmentControls = canAdjust
+    ? `<div class="skill-adjustments">
+        <button type="button" class="skill-rank-button" data-skill-adjust="${escapeHtml(key)}" data-adjustment="-1" aria-label="Reduce ${escapeHtml(skill.name)} by one level" ${level <= 0 ? "disabled" : ""}>−</button>
+        <button type="button" class="skill-rank-button" data-skill-adjust="${escapeHtml(key)}" data-adjustment="1" aria-label="Increase ${escapeHtml(skill.name)} by one level" ${level >= (key === "jack of all trades" ? 3 : 5) ? "disabled" : ""}>+</button>
+      </div>`
+    : "";
+  const sourceBadge = !editingCharacterId && skill.source ? `<small class="skill-source">${escapeHtml(skill.source)}</small>` : "";
+  return `<article class="skill-row ${proficiency ? "skill-row-proficient" : "skill-row-untrained"}" data-skill-key="${escapeHtml(key)}">
+    <button type="button" class="skill-roll-button" data-open-skill-check="${escapeHtml(key)}" aria-label="Set up a skill check for ${escapeHtml(skill.name)}">
+      <span class="skill-row-name">${escapeHtml(skillLabel)}</span>
+      <small>${level > 0 ? "Click to set up a check" : level === 0 ? "Trained; no unskilled penalty" : "Untrained"}</small>
+    </button>
+    ${sourceBadge}
+    ${advantages.length ? `<small class="skill-trait-hint">Trait advantage: ${advantages.map(escapeHtml).join(", ")} (apply when relevant)</small>` : ""}
+    ${adjustmentControls}
+  </article>`;
+}
+
+function renderSkillSections() {
+  const ranks = getCurrentSkillRanks();
+  const skills = getAllSkillNames(ranks).map((name) => {
+    const skill = ranks.get(name.toLocaleLowerCase());
+    return skill
+      ? { ...skill, source: skill.level > 0 ? "Tracked" : "Level 0" }
+      : { name, level: -1, source: "" };
+  });
+  const proficient = skills.filter((skill) => skill.level > 0);
+  const remaining = skills.filter((skill) => skill.level <= 0);
+  const canAdjust = Boolean(editingCharacterId || careerMusteredOut);
+  proficientSkillList.innerHTML = proficient.length
+    ? proficient.map((skill) => renderSkillRow(skill, canAdjust, true)).join("")
+    : '<p class="section-helper skill-empty-state">No proficient skills yet. Career and homeworld selections appear here automatically.</p>';
+  remainingSkillList.innerHTML = remaining.map((skill) => renderSkillRow(skill, canAdjust, false)).join("");
+  document.querySelector("#proficient-skill-count").textContent = String(proficient.length);
+  document.querySelector("#remaining-skill-count").textContent = String(remaining.length);
+  updateDerivedCharacteristics();
+}
+
+function updateSkillAdjustment(skillName, adjustment) {
+  const name = canonicalSkillName(skillName);
+  const key = name.toLocaleLowerCase();
+  const current = getCurrentSkillRanks().get(key)?.level ?? 0;
+  const maxLevel = key === "jack of all trades" ? 3 : 5;
+  const next = Math.min(maxLevel, Math.max(0, current + adjustment));
+  if (next === current) return;
+
+  if (editingCharacterId) {
+    currentSkillLevels = new Map(currentSkillLevels);
+    currentSkillLevels.set(key, { name, level: next });
+  } else {
+    const generation = readGeneration();
+    const baseRanks = getGenerationSkillRanks({ ...generation, skillAdjustments: [] }, trackedCareerName);
+    const baseLevel = baseRanks.get(key)?.level || 0;
+    const totalRanks = [...getCurrentSkillRanks().values()].reduce((total, skill) => total + skill.level, 0);
+    const skillLimit = Number(form.elements.namedItem("int").value || 0) + Number(form.elements.namedItem("edu").value || 0);
+    if (adjustment > 0 && careerMusteredOut && totalRanks >= skillLimit) {
+      showNotice("This character has reached the INT + EDU skill-rank limit for character creation.", true);
+      return;
+    }
+    generationSkillAdjustments.set(key, { skill: name, delta: next - baseLevel });
+  }
+  renderSkillSections();
+  updateSkillCheckModifiers();
+}
+
+function openSkillCheck(skillKey) {
+  const ranks = getCurrentSkillRanks();
+  const key = canonicalSkillName(skillKey).toLocaleLowerCase();
+  const skill = ranks.get(key);
+  const skillName = skill?.name || getAllSkillNames(ranks).find((name) => name.toLocaleLowerCase() === key) || canonicalSkillName(skillKey);
+  if (!skillName) return;
+  activeSkillCheck = { name: skillName, level: skill?.level ?? -1 };
+  const isUntrained = activeSkillCheck.level < 0;
+  const traits = getSkillTraitAdvantages(skillName);
+  skillCheckPanel.hidden = false;
+  skillCheckPanel.innerHTML = `<div class="skill-check-heading">
+      <div><p class="eyebrow">SKILL CHECK</p><h3>${escapeHtml(skillName)}${isUntrained ? " · Untrained" : ` · Level ${activeSkillCheck.level}`}</h3></div>
+      <button type="button" class="icon-button" data-close-skill-check aria-label="Close skill check">×</button>
+    </div>
+    <div class="skill-check-controls">
+      <label class="field"><span>Task characteristic</span>
+        <select data-skill-check-characteristic>
+          ${ATTRIBUTE_KEYS.map((key) => `<option value="${key}" ${key === "int" ? "selected" : ""}>${key.toUpperCase()} (${escapeHtml(form.elements.namedItem(key).value)})</option>`).join("")}
+        </select>
+      </label>
+      <label class="field"><span>Target</span><input data-skill-check-target type="number" min="2" max="30" value="8"></label>
+      <label class="field"><span>Other DM</span><input data-skill-check-dm type="number" min="-20" max="20" value="0"></label>
+      ${traits.length ? `<label class="skill-advantage-toggle"><input data-skill-check-advantage type="checkbox"><span>Apply relevant trait Advantage: ${traits.map(escapeHtml).join(", ")}</span></label>` : ""}
+    </div>
+    <p class="skill-check-modifiers" data-skill-check-modifiers></p>
+    <button type="button" class="button button-primary" data-roll-skill-check>Roll skill check</button>
+    <p class="skill-check-result" data-skill-check-result aria-live="polite"></p>`;
+  updateSkillCheckModifiers();
+}
+
+function updateSkillCheckModifiers() {
+  if (!activeSkillCheck || skillCheckPanel.hidden) return;
+  const ranks = getCurrentSkillRanks();
+  const skill = ranks.get(activeSkillCheck.name.toLocaleLowerCase());
+  const level = skill?.level ?? -1;
+  const characteristic = skillCheckPanel.querySelector("[data-skill-check-characteristic]").value;
+  const characteristicScore = Number(form.elements.namedItem(characteristic).value || 0);
+  const characteristicDm = getCharacteristicDm(characteristicScore);
+  const jackOfAllTrades = ranks.get("jack of all trades")?.level || 0;
+  const unskilledDm = level < 0 && activeSkillCheck.name !== "Athletics" ? -Math.max(0, 3 - jackOfAllTrades) : 0;
+  const result = level > 0 ? level + characteristicDm : characteristicDm + unskilledDm;
+  const resultText = `${characteristic.toUpperCase()} DM ${characteristicDm >= 0 ? "+" : ""}${characteristicDm}`
+    + `${level > 0 ? ` · ${activeSkillCheck.name} ${level}` : level === 0 ? " · Level 0 (no skill DM)" : ` · Unskilled DM ${unskilledDm}${jackOfAllTrades ? ` (Jack of All Trades ${jackOfAllTrades})` : ""}`}`
+    + ` · Total modifier ${result + Number(skillCheckPanel.querySelector("[data-skill-check-dm]").value || 0) >= 0 ? "+" : ""}${result + Number(skillCheckPanel.querySelector("[data-skill-check-dm]").value || 0)}`;
+  skillCheckPanel.querySelector("[data-skill-check-modifiers]").textContent = resultText;
+}
+
+function rollSkillCheck() {
+  if (!activeSkillCheck) return;
+  const ranks = getCurrentSkillRanks();
+  const skill = ranks.get(activeSkillCheck.name.toLocaleLowerCase());
+  const level = skill?.level ?? -1;
+  const characteristic = skillCheckPanel.querySelector("[data-skill-check-characteristic]").value;
+  const score = Number(form.elements.namedItem(characteristic).value || 0);
+  const characteristicDm = getCharacteristicDm(score);
+  const jackOfAllTrades = ranks.get("jack of all trades")?.level || 0;
+  const unskilledDm = level < 0 && activeSkillCheck.name !== "Athletics" ? -Math.max(0, 3 - jackOfAllTrades) : 0;
+  const extraDm = Number(skillCheckPanel.querySelector("[data-skill-check-dm]").value || 0);
+  const target = Number(skillCheckPanel.querySelector("[data-skill-check-target]").value || 8);
+  if (!Number.isInteger(extraDm) || extraDm < -20 || extraDm > 20 || !Number.isInteger(target) || target < 2 || target > 30) {
+    skillCheckPanel.querySelector("[data-skill-check-result]").textContent = "Enter an integer target from 2 to 30 and an integer situational DM from −20 to +20.";
+    return;
+  }
+  const hasAdvantage = Boolean(skillCheckPanel.querySelector("[data-skill-check-advantage]")?.checked);
+  const dice = Array.from({ length: hasAdvantage ? 3 : 2 }, () => Math.floor(Math.random() * 6) + 1);
+  const usedDice = hasAdvantage ? dice.sort((a, b) => b - a).slice(0, 2) : dice;
+  const diceTotal = usedDice.reduce((sum, die) => sum + die, 0);
+  const skillDm = level > 0 ? level : 0;
+  const totalDm = characteristicDm + skillDm + unskilledDm + extraDm;
+  const total = diceTotal + totalDm;
+  const natural = usedDice.length === 2 ? usedDice.reduce((sum, die) => sum + die, 0) : diceTotal;
+  const success = natural === 12 || (natural !== 2 && total >= target);
+  const result = skillCheckPanel.querySelector("[data-skill-check-result]");
+  const signedDm = totalDm >= 0 ? `+ ${totalDm}` : `− ${Math.abs(totalDm)}`;
+  result.textContent = `${success ? "Success" : "Failure"} · ${usedDice.join(" + ")}${hasAdvantage ? ` (Advantage; rolled ${dice.join(", ")})` : ""} = ${diceTotal} ${signedDm} = ${total} vs ${target}+`;
 }
 
 function readGeneration() {
@@ -982,6 +1294,7 @@ function readGeneration() {
     events: Array.from(termEventRows.querySelectorAll("[data-event-roll]"), (input) => {
       const eventIndex = input.dataset.eventRoll;
       const injuryRoll = termEventRows.querySelector(`[data-event-injury-roll="${eventIndex}"]`)?.value || "";
+      const skillAwardSelect = termEventRows.querySelector(`[data-event-skill-award="${eventIndex}"]`);
       return {
         roll: input.value,
         career: input.dataset.eventCareer || "",
@@ -990,8 +1303,16 @@ function readGeneration() {
         injury: Boolean(injuryRoll) || input.closest("[data-event-card]")?.dataset.injuryRecorded === "true",
         injuryRoll,
         injuryDetailRoll: termEventRows.querySelector(`[data-injury-detail-roll="${eventIndex}"]`)?.value || "",
+        skillAwards: skillAwardSelect?.value ? [skillAwardSelect.value] : [],
+        skillAwardCheckIndex: skillAwardSelect?.dataset.awardCheckIndex === "" || !skillAwardSelect
+          ? null
+          : Number(skillAwardSelect.dataset.awardCheckIndex),
+        skillAwardRequiresSuccess: Boolean(skillAwardSelect && skillAwardSelect.dataset.awardCheckIndex !== ""),
+        skillChoicesLocked: Boolean(input.closest("[data-event-card]")?.dataset.skillChoicesLocked === "true"
+          || isValidManualRoll(input.value, 2, 12)),
         checks: Array.from(termEventRows.querySelectorAll(`[data-check-event="${eventIndex}"]`), (checkRow) => ({
-          skill: checkRow.querySelector("[data-event-check-skill]")?.value || "",
+          skill: getSelectedEventCheckSkill(checkRow) || checkRow.dataset.checkSkill || "",
+          kind: checkRow.querySelector("[data-event-check-skill]:checked")?.dataset.kind || checkRow.dataset.checkKind || "skill",
           roll: checkRow.querySelector("[data-event-check-roll]")?.value || "",
           dm: Number(checkRow.querySelector("[data-event-check-dm]")?.value || 0)
         }))
@@ -1012,6 +1333,7 @@ function readGeneration() {
       dm: Number(document.querySelector(`[data-benefit-dm="${select.dataset.benefitTable}"]`).value || 0)
     })),
     traits: Array.from(traitRows.querySelectorAll("[data-trait]"), (input) => input.value.trim()).filter(Boolean),
+    skillAdjustments: [...generationSkillAdjustments.values()],
     musteredOut: careerMusteredOut,
     ironMan: ironManRuleInput.checked
   };
@@ -1074,9 +1396,14 @@ function renderCharacterSheetRecord(character) {
     }
     const effect = entry.effect || getCareerEventEffect(entry.career || character.career, Number(entry.roll));
     const checks = getCareerEventChecks(effect);
+    const savedRanks = getSavedSkillRanks(character);
     (entry.checks || []).forEach((check, checkIndex) => {
       if (!check.roll || !checks[checkIndex]) return;
-      const result = getEventCheckResult(checks[checkIndex], check.skill, check.roll, check.dm);
+      const option = checks[checkIndex].options.find((candidate) => candidate.skill === check.skill) || checks[checkIndex].options[0];
+      const result = getEventCheckResult(checks[checkIndex], check.skill, check.roll, check.dm, {
+        kind: check.kind || option.kind,
+        skillLevel: check.skillLevel ?? (option.kind === "skill" ? savedRanks.get(canonicalSkillName(check.skill).toLocaleLowerCase())?.level || 0 : 0)
+      });
       records.push(`<strong>Term ${index + 1} throw:</strong> ${escapeHtml(result)}`);
     });
     if (isValidManualRoll(entry.injuryRoll, 2, 12)) {
@@ -1119,6 +1446,8 @@ function renderCareerSkillRows(generation) {
   careerSkillRows.innerHTML = Array.from({ length: generation.terms }, (_, index) => {
     const term = index + 1;
     const entry = generation.careerSkills?.[index] || { service: "", picks: [] };
+    const eventEntry = generation.events?.[index];
+    const locked = Boolean(eventEntry?.skillChoicesLocked || isValidManualRoll(eventEntry?.roll, 2, 12));
     const termCareerName = entry.career || careerName;
     const career = getCareerDefinition(termCareerName);
     if (termCareerName.toLocaleLowerCase() === previousCareer.toLocaleLowerCase()) termsInCareer += 1;
@@ -1164,12 +1493,12 @@ function renderCareerSkillRows(generation) {
     const startsNewCareer = termsInCareer === 1;
     const serviceRow = startsNewCareer
       ? `<label class="field"><span>${term === 1 ? "Term 1 service skill · level 1" : "New-career service skill · level 0"}</span>
-          <select data-career-service aria-label="Term ${term} service skill" ${requireCareerChoices ? "required" : ""}>${skillOptions(entry.service, true)}</select>
+          <select data-career-service aria-label="Term ${term} service skill" ${requireCareerChoices ? "required" : ""} ${locked ? "disabled" : ""}>${skillOptions(entry.service, true)}</select>
         </label>`
       : "";
     const pickRows = Array.from({ length: pickCount }, (_, pickIndex) => `
       <label class="field"><span>Skill level ${pickIndex + 1} of ${pickCount}</span>
-        <select data-career-pick aria-label="Term ${term} skill choice ${pickIndex + 1}" ${requireCareerChoices ? "required" : ""}>
+        <select data-career-pick aria-label="Term ${term} skill choice ${pickIndex + 1}" ${requireCareerChoices ? "required" : ""} ${locked ? "disabled" : ""}>
           ${skillOptions(allowedPicks[pickIndex] || "")}
         </select>
       </label>`).join("");
@@ -1178,10 +1507,10 @@ function renderCareerSkillRows(generation) {
       rankSkills ? `Rank ${rank} bonus: ${escapeHtml(rankSkills)} 1.` : "",
       rankAttribute ? `Rank ${rank} characteristic benefit: ${escapeHtml(rankAttribute)}.` : ""
     ].filter(Boolean).join(" ") : "";
-    return `<article class="generation-row career-skill-row" data-career-term="${term}" data-career-name="${escapeHtml(termCareerName)}">
+    return `<article class="generation-row career-skill-row" data-career-term="${term}" data-career-name="${escapeHtml(termCareerName)}" data-skill-choices-locked="${locked}">
       <div class="generation-row-heading"><strong>Term ${term} · ${escapeHtml(termCareerName)} skill choices</strong></div>
       <div class="form-grid career-skill-grid">${serviceRow}${pickRows}</div>
-      <p class="section-helper">${skillCap} ${rankInfo}</p>
+      <p class="section-helper">${locked ? "Skill choices locked because this term's event has been rolled. " : ""}${skillCap} ${rankInfo}</p>
     </article>`;
   }).join("");
   updateDerivedCharacteristics();
@@ -1196,13 +1525,14 @@ function renderCareerEventChecks(eventIndex, effect, savedChecks = []) {
       : check.options[0].skill;
     const option = check.options.find((candidate) => candidate.skill === selectedSkill);
     const choice = check.options.length > 1
-      ? `<label class="field event-check-choice"><span>Choose check</span>
-          <select data-event-check-skill>${check.options.map((candidate) => (
-            `<option value="${escapeHtml(candidate.skill)}" ${candidate.skill === selectedSkill ? "selected" : ""}>${escapeHtml(candidate.skill)} ${candidate.target}+</option>`
-          )).join("")}</select>
-        </label>`
+      ? `<fieldset class="event-check-choice">
+          <legend>Choose one check</legend>
+          ${check.options.map((candidate) => (
+            `<label class="event-check-option"><input type="radio" name="event-check-${eventIndex}-${checkIndex}" data-event-check-skill value="${escapeHtml(candidate.skill)}" data-kind="${candidate.kind}" ${candidate.skill === selectedSkill ? "checked" : ""}><span>${escapeHtml(candidate.skill)} ${candidate.target}+</span></label>`
+          )).join("")}
+        </fieldset>`
       : `<strong class="event-check-name">${escapeHtml(option.skill)} ${option.target}+</strong>`;
-    return `<div class="event-check-row" data-check-event="${eventIndex}" data-check-index="${checkIndex}">
+    return `<div class="event-check-row" data-check-event="${eventIndex}" data-check-index="${checkIndex}" data-check-skill="${escapeHtml(option.skill)}" data-check-kind="${option.kind}">
       ${choice}
       <label class="visually-hidden" for="event-check-roll-${eventIndex}-${checkIndex}">2D6 result for ${escapeHtml(option.skill)} check</label>
       <input id="event-check-roll-${eventIndex}-${checkIndex}" data-event-check-roll type="number" min="2" max="12" value="${escapeHtml(saved.roll || "")}" inputmode="numeric" placeholder="2D6">
@@ -1215,6 +1545,25 @@ function renderCareerEventChecks(eventIndex, effect, savedChecks = []) {
   }).join("");
 }
 
+function renderEventSkillAward(eventIndex, effect, savedAwards = [], checkCount = 0) {
+  const outcomes = getCareerEventChecks(effect).map((check) => check.successOutcome);
+  const awardText = outcomes.length ? outcomes.join(" ") : effect;
+  const namedChoices = getNamedSkillAwards(awardText);
+  const hasGenericAward = /(?:any|one|a)\s+(?:one\s+)?skill[^.;]{0,50}(?:level|increase)|free skill level|skill level/i.test(awardText);
+  const requiresSelection = (hasGenericAward && !namedChoices.length) || namedChoices.length > 1;
+  if (!requiresSelection) return "";
+  const selectedSkill = savedAwards[0] || "";
+  const awardCheckIndex = checkCount ? 0 : "";
+  const options = namedChoices.length ? [...new Set(namedChoices)] : SKILL_NAMES;
+  return `<label class="field event-skill-award">
+    <span>${checkCount ? "Skill to gain on a successful check" : "Skill to gain from this event"}</span>
+    <select data-event-skill-award="${eventIndex}" data-award-check-index="${awardCheckIndex}">
+      <option value="">Choose a skill</option>
+      ${options.map((skill) => `<option value="${escapeHtml(skill)}" ${selectedSkill === skill ? "selected" : ""}>${escapeHtml(skill)}</option>`).join("")}
+    </select>
+  </label>`;
+}
+
 function renderGenerationRows(generation = readGeneration()) {
   const { terms, bonusBenefits, agingTechDm } = generation;
   renderCareerSkillRows(generation);
@@ -1224,9 +1573,12 @@ function renderGenerationRows(generation = readGeneration()) {
     const termCareer = entry.career || generation.careerSkills?.[index]?.career || document.querySelector("#character-career").value.trim();
     const eventEffect = entry.roll ? getCareerEventEffect(termCareer, Number(entry.roll)) : "";
     const eventChecks = eventEffect ? renderCareerEventChecks(index, eventEffect, entry.checks) : "";
+    const eventSkillAward = eventEffect
+      ? renderEventSkillAward(index, eventEffect, entry.skillAwards || [], getCareerEventChecks(eventEffect).length)
+      : "";
     const injuryRoll = entry.injuryRoll || "";
     const injuryDetailRoll = entry.injuryDetailRoll || "";
-    return `<article class="generation-row" data-event-card="${index}" data-injury-recorded="${entry.injury ? "true" : "false"}">
+    return `<article class="generation-row" data-event-card="${index}" data-injury-recorded="${entry.injury ? "true" : "false"}" data-skill-choices-locked="${entry.skillChoicesLocked || isValidManualRoll(entry.roll, 2, 12) ? "true" : "false"}">
       <div class="generation-row-heading"><strong>Term ${number} ${termCareer ? `${escapeHtml(termCareer)} ` : ""}event · 2D6</strong>
         <div class="dice-entry">
           <label class="visually-hidden" for="event-roll-${index}">Term ${number} event roll</label>
@@ -1239,6 +1591,7 @@ function renderGenerationRows(generation = readGeneration()) {
         <textarea id="event-outcome-${index}" data-event-outcome="${index}" data-event-effect="${escapeHtml(entry.effect || eventEffect)}" rows="3" maxlength="1200" placeholder="Roll to display the event result and effects">${escapeHtml(entry.outcome)}</textarea>
       </label>
       <div class="event-checks" data-event-checks="${index}" data-effect="${escapeHtml(eventEffect)}">${eventChecks}</div>
+      <div class="event-skill-award-container" data-event-skill-award-container="${index}" data-effect="${escapeHtml(eventEffect)}">${eventSkillAward}</div>
       <section class="event-injury-roll" data-event-injury-roll-row="${index}" ${/injury/i.test(eventEffect) ? "" : "hidden"}>
         <strong>Injury table · END 6+</strong>
         <p class="section-helper">Roll 2D6 or enter your result. The app applies END and career DMs and shows the injury-table outcome.</p>
@@ -1343,6 +1696,35 @@ function renderGenerationRows(generation = readGeneration()) {
   updateTraitDescriptions();
   updateAgingPreviews();
   updateEventPreviews();
+  renderSkillSections();
+}
+
+function lockTermSkillChoices(eventInput) {
+  const eventCard = eventInput.closest("[data-event-card]");
+  if (!eventCard || !isValidManualRoll(eventInput.value, 2, 12)) return true;
+  const eventIndex = Number(eventInput.dataset.eventRoll);
+  const skillRow = careerSkillRows.querySelector(`[data-career-term="${eventIndex + 1}"]`);
+  const missingChoice = careerTrackingEnabled
+    ? Array.from(skillRow?.querySelectorAll("select[required]") || []).find((select) => !select.value)
+    : null;
+  if (missingChoice) {
+    eventInput.value = "";
+    setCareerProgressError("Choose this term's career skills before rolling its event; those choices lock once the event is rolled.");
+    missingChoice.focus();
+    return false;
+  }
+  eventCard.dataset.skillChoicesLocked = "true";
+  if (skillRow) {
+    skillRow.dataset.skillChoicesLocked = "true";
+    skillRow.querySelectorAll("select").forEach((select) => {
+      select.disabled = true;
+    });
+    const helper = skillRow.querySelector(".section-helper");
+    if (helper && !helper.textContent.includes("Skill choices locked")) {
+      helper.textContent = `Skill choices locked because this term's event has been rolled. ${helper.textContent}`.trim();
+    }
+  }
+  return true;
 }
 
 function updateEventPreviews(replaceEffects = false) {
@@ -1351,6 +1733,7 @@ function updateEventPreviews(replaceEffects = false) {
     const outcome = document.querySelector(`#event-outcome-${input.dataset.eventRoll}`);
     const injuryRow = termEventRows.querySelector(`[data-event-injury-roll-row="${input.dataset.eventRoll}"]`);
     const checkRows = termEventRows.querySelector(`[data-event-checks="${input.dataset.eventRoll}"]`);
+    const skillAwardContainer = termEventRows.querySelector(`[data-event-skill-award-container="${input.dataset.eventRoll}"]`);
     if (!preview) return;
     if (!input.value) {
       preview.textContent = "";
@@ -1359,6 +1742,10 @@ function updateEventPreviews(replaceEffects = false) {
       if (checkRows) {
         checkRows.innerHTML = "";
         checkRows.dataset.effect = "";
+      }
+      if (skillAwardContainer) {
+        skillAwardContainer.innerHTML = "";
+        skillAwardContainer.dataset.effect = "";
       }
       if (replaceEffects) {
         termEventRows.querySelector(`[data-event-injury-roll="${input.dataset.eventRoll}"]`).value = "";
@@ -1386,7 +1773,7 @@ function updateEventPreviews(replaceEffects = false) {
     if (checkRows && checkRows.dataset.effect !== effect) {
       const effectChanged = Boolean(checkRows.dataset.effect);
       const currentChecks = Array.from(checkRows.querySelectorAll("[data-check-event]"), (row) => ({
-        skill: row.querySelector("[data-event-check-skill]")?.value || row.querySelector("[data-event-check-roll]")?.dataset.skill || "",
+        skill: getSelectedEventCheckSkill(row) || row.querySelector("[data-event-check-roll]")?.dataset.skill || "",
         roll: row.querySelector("[data-event-check-roll]")?.value || "",
         dm: Number(row.querySelector("[data-event-check-dm]")?.value || 0)
       }));
@@ -1398,18 +1785,32 @@ function updateEventPreviews(replaceEffects = false) {
       checkRows.innerHTML = renderCareerEventChecks(input.dataset.eventRoll, effect, currentChecks);
       checkRows.dataset.effect = effect;
     }
+    if (skillAwardContainer && skillAwardContainer.dataset.effect !== effect) {
+      const selectedAwards = Array.from(skillAwardContainer.querySelectorAll("[data-event-skill-award]"), (select) => select.value).filter(Boolean);
+      skillAwardContainer.innerHTML = renderEventSkillAward(
+        input.dataset.eventRoll,
+        effect,
+        selectedAwards,
+        getCareerEventChecks(effect).length
+      );
+      skillAwardContainer.dataset.effect = effect;
+    }
     if (injuryRow) {
       const eventChecks = getCareerEventChecks(effect);
       const eventIndex = input.dataset.eventRoll;
       const requiresInjury = result === "Injury" || /^Injury:/i.test(effect)
         || eventChecks.some((check, checkIndex) => {
           const row = checkRows.querySelector(`[data-check-index="${checkIndex}"]`);
-          const skill = row?.querySelector("[data-event-check-skill]")?.value || row?.querySelector("[data-event-check-roll]")?.dataset.skill || check.options[0].skill;
-          const roll = row?.querySelector("[data-event-check-roll]")?.value;
-          const dm = Number(row?.querySelector("[data-event-check-dm]")?.value || 0);
-          return roll && getEventCheckResult(check, skill, roll, dm).startsWith("Failure")
-            && /injury/i.test(check.failureOutcome);
-        });
+        const skill = row ? getSelectedEventCheckSkill(row) || row.querySelector("[data-event-check-roll]")?.dataset.skill : check.options[0].skill;
+        const option = check.options.find((candidate) => candidate.skill === skill) || check.options[0];
+        const roll = row?.querySelector("[data-event-check-roll]")?.value;
+        const dm = Number(row?.querySelector("[data-event-check-dm]")?.value || 0);
+        const skillLevel = option.kind === "skill"
+          ? getSkillRankBeforeEventCheck(readGeneration(), Number(eventIndex), checkIndex, skill)
+          : 0;
+        return roll && getEventCheckResult(check, skill, roll, dm, { kind: option.kind, skillLevel }).startsWith("Failure")
+          && /injury/i.test(check.failureOutcome);
+      });
       injuryRow.hidden = !requiresInjury;
       injuryRow.dataset.requiresInjury = String(requiresInjury);
       injuryRow.dataset.result = result || "";
@@ -1431,12 +1832,18 @@ function updateCareerEventCheckPreviews() {
       : "";
     const check = getCareerEventChecks(eventEffect)[checkIndex];
     if (!check) return;
-    const select = row.querySelector("[data-event-check-skill]");
     const roll = row.querySelector("[data-event-check-roll]");
     const dm = row.querySelector("[data-event-check-dm]");
-    const skill = select?.value || check.options[0].skill;
+    const skill = getSelectedEventCheckSkill(row) || check.options[0].skill;
+    const option = check.options.find((candidate) => candidate.skill === skill) || check.options[0];
+    const skillLevel = option.kind === "skill"
+      ? getSkillRankBeforeEventCheck(readGeneration(), eventIndex, checkIndex, skill)
+      : 0;
     const result = row.querySelector("[data-event-check-result]");
-    result.textContent = getEventCheckResult(check, skill, roll.value, dm.value);
+    const skillLabel = row.querySelector('label[for^="event-check-roll-"]');
+    if (skillLabel) skillLabel.textContent = `2D6 result for ${skill} check`;
+    roll.setAttribute("aria-label", `2D6 result for ${skill} check`);
+    result.textContent = getEventCheckResult(check, skill, roll.value, dm.value, { kind: option.kind, skillLevel });
   });
 }
 
@@ -1700,9 +2107,9 @@ function setCharacterEditorMode(character) {
   document.querySelector("#characteristic-helper").textContent = isSheet
     ? "Characteristics are preserved from character creation."
     : "Assign 5, 6, 7, 8, 9, and 10 exactly once—5 is lowest, 10 highest. Place them in Strength (STR), Dexterity (DEX), Endurance (END), Intelligence (INT), Education (EDU), and Social Standing (SOC).";
-  document.querySelector("#skills-helper").textContent = isSheet
-    ? "Update this list to reflect skills gained during play; career and homeworld awards are retained."
-    : "Career and homeworld awards are added to these manually recorded skills when saved.";
+  document.querySelector("#skills-title").textContent = isSheet
+    ? "Skills are tracked on this sheet. Adjust ranks as they change during play, then click a skill to make a check."
+    : "Career and homeworld skills are tracked automatically. Select a skill to set up a check using its rank, a task characteristic, and any applicable trait.";
   document.querySelector("#career-history-helper").textContent = isSheet
     ? "Career history captured during character creation is preserved."
     : "Record careers, terms, and notable turning points.";
@@ -1723,6 +2130,10 @@ function setCharacterEditorMode(character) {
 function resetForm() {
   form.reset();
   editingCharacterId = "";
+  currentSkillLevels = new Map();
+  generationSkillAdjustments = new Map();
+  activeSkillCheck = null;
+  skillCheckPanel.hidden = true;
   setCharacterEditorMode(null);
   document.querySelector("#character-id").value = "";
   currentInventory = [];
@@ -1766,8 +2177,8 @@ function openEditor(character = null) {
     document.querySelector("#character-homeworld").value = character.homeworld;
     document.querySelector("#character-career").value = character.career;
     document.querySelector("#character-history").value = character.history;
-    document.querySelector("#character-skills").value = getManualSkillLines(character);
     document.querySelector("#character-notes").value = character.notes;
+    currentSkillLevels = getSavedSkillRanks(character);
     currentInventory = (character.inventory || []).map((entry) => ({ ...entry }));
     ATTRIBUTE_KEYS.forEach((key) => {
       form.elements.namedItem(key).value = character.attributes[key];
@@ -1786,6 +2197,10 @@ function openEditor(character = null) {
       benefits: [{ table: "material", roll: "", outcome: "" }],
       traits: []
     };
+    generationSkillAdjustments = new Map((generation.skillAdjustments || []).map((entry) => [
+      canonicalSkillName(entry.skill).toLocaleLowerCase(),
+      { skill: canonicalSkillName(entry.skill), delta: entry.delta }
+    ]));
     careerTrackingEnabled = Array.isArray(generation.careerSkills);
     trackedCareerName = generation.trackedCareer || character.career;
     careerMusteredOut = generation.musteredOut ?? generation.terms > 0;
@@ -1815,14 +2230,20 @@ function readForm() {
     ? { ...existingCharacter.attributes }
     : Object.fromEntries(ATTRIBUTE_KEYS.map((key) => [key, String(formData.get(key) || "")]));
   const generation = existingCharacter?.generation || readGeneration();
-  const skillLines = getSkillLines(String(formData.get("skills")));
-  const awards = getCareerAwards(generation, generation.trackedCareer || String(formData.get("career")).trim());
-  const skills = mergeAwardedSkills(skillLines, awards);
-  if (generation.homeworldSkill) {
-    const homeworldAward = { [generation.homeworldSkill.toLocaleLowerCase()]: { name: generation.homeworldSkill, level: 1 } };
-    const merged = mergeAwardedSkills(getSkillLines(skills.join("\n")), homeworldAward);
-    skills.splice(0, skills.length, ...merged);
+  if (!existingCharacter) {
+    generation.events.forEach((entry, eventIndex) => {
+      entry.checks.forEach((check, checkIndex) => {
+        const eventEffect = entry.effect || getCareerEventEffect(entry.career || generation.trackedCareer, Number(entry.roll));
+        const option = getCareerEventChecks(eventEffect)[checkIndex]?.options.find((candidate) => candidate.skill === check.skill);
+        check.skillLevel = option?.kind === "skill"
+          ? getSkillRankBeforeEventCheck(generation, eventIndex, checkIndex, check.skill)
+          : 0;
+      });
+    });
   }
+  const skills = existingCharacter
+    ? serializeSkillRanks(currentSkillLevels)
+    : serializeSkillRanks(getCareerAwards(generation, generation.trackedCareer || String(formData.get("career")).trim()));
 
   return {
     id: String(formData.get("id") || crypto.randomUUID()),
@@ -1857,6 +2278,26 @@ function handleSave(event) {
     const violations = getFirstTermSkillViolations(generation);
     if (violations.length) {
       showNotice(`Term 1 skills cannot exceed level 2: ${violations.join(", ")}.`, true);
+      return;
+    }
+    const ranks = getGenerationSkillRanks(generation, generation.trackedCareer || trackedCareerName);
+    const overRanked = [...ranks.values()].filter((skill) => skill.level > (skill.name === "Jack of All Trades" ? 3 : 5));
+    if (overRanked.length) {
+      showNotice(`Skill rank limits exceeded: ${overRanked.map((skill) => skill.name).join(", ")}.`, true);
+      return;
+    }
+    if (careerMusteredOut) {
+      const totalRanks = [...ranks.values()].reduce((total, skill) => total + skill.level, 0);
+      const skillLimit = Number(form.elements.namedItem("int").value || 0) + Number(form.elements.namedItem("edu").value || 0);
+      if (totalRanks > skillLimit) {
+        showNotice(`Skill ranks total ${totalRanks}, above the INT + EDU limit of ${skillLimit}. Reduce ranks before saving.`, true);
+        return;
+      }
+    }
+  } else {
+    const overRanked = [...currentSkillLevels.values()].filter((skill) => skill.level > (skill.name === "Jack of All Trades" ? 3 : 5));
+    if (overRanked.length) {
+      showNotice(`Skill rank limits exceeded: ${overRanked.map((skill) => skill.name).join(", ")}.`, true);
       return;
     }
   }
@@ -1930,6 +2371,7 @@ ATTRIBUTE_KEYS.forEach((key) => form.elements.namedItem(key).addEventListener("i
   renderInventory();
   if (key === "edu") renderGenerationRows(readGeneration());
   else updateDerivedCharacteristics();
+  updateSkillCheckModifiers();
 }));
 searchInput.addEventListener("input", render);
 form.addEventListener("submit", handleSave);
@@ -1966,7 +2408,11 @@ itemGrid.addEventListener("click", (event) => {
   }
 });
 form.addEventListener("change", (event) => {
-  if (event.target.matches("[data-trait]")) updateTraitDescriptions();
+  if (event.target.matches("[data-trait]")) {
+    updateTraitDescriptions();
+    renderSkillSections();
+  }
+  if (event.target.matches("[data-event-skill-award]")) renderSkillSections();
   const benefitType = event.target.closest("[data-benefit-table]");
   if (benefitType) {
     updateBenefitControls(benefitType);
@@ -1976,12 +2422,20 @@ form.addEventListener("change", (event) => {
 });
 form.addEventListener("input", (event) => {
   if (event.target.matches("[data-aging-roll]")) updateAgingPreviews();
-  if (event.target.matches("[data-event-roll]")) updateEventPreviews(true);
+  if (event.target.matches("[data-event-roll]")) {
+    if (!lockTermSkillChoices(event.target)) {
+      updateEventPreviews(true);
+      return;
+    }
+    updateEventPreviews(true);
+  }
   if (event.target.matches("[data-event-check-roll], [data-event-check-dm], [data-event-injury-roll], [data-injury-detail-roll]")) {
     updateCareerEventCheckPreviews();
     updateInjuryRollPreviews();
     updateEventPreviews();
+    renderSkillSections();
   }
+  if (event.target.matches("[data-event-roll]")) renderSkillSections();
   if (event.target.matches("[data-benefit-roll], [data-benefit-dm]")) updateBenefitResults();
 });
 homeworldTypeInput.addEventListener("change", () => updateHomeworldSkillOptions());
@@ -1995,7 +2449,14 @@ document.querySelector("#character-career").addEventListener("change", () => {
   setCareerProgressError();
   if (careerTrackingEnabled && generation.terms > 0) {
     const activeIndex = generation.terms - 1;
+    generation.careerSkills[activeIndex] ||= {
+      term: activeIndex + 1,
+      career: nextCareer,
+      service: "",
+      picks: []
+    };
     generation.careerSkills[activeIndex].career = nextCareer;
+    generation.events[activeIndex] ||= { roll: "", career: nextCareer, outcome: "", checks: [] };
     generation.events[activeIndex].career = nextCareer;
     generation.trackedCareer = nextCareer;
   }
@@ -2037,8 +2498,47 @@ document.querySelector("#cancel-career-switch-button").addEventListener("click",
   document.querySelector("#career-switch-picker").hidden = true;
   setCareerProgressError();
 });
-document.querySelector("#character-skills").addEventListener("input", updateDerivedCharacteristics);
-homeworldSkillInput.addEventListener("change", updateDerivedCharacteristics);
+homeworldSkillInput.addEventListener("change", renderSkillSections);
+const skillManagementSection = document.querySelector(".skill-management-section");
+skillManagementSection.addEventListener("click", (event) => {
+  const skillButton = event.target.closest("[data-open-skill-check]");
+  const adjustmentButton = event.target.closest("[data-skill-adjust]");
+  if (skillButton) {
+    openSkillCheck(skillButton.dataset.openSkillCheck);
+    return;
+  }
+  if (adjustmentButton && !adjustmentButton.disabled) {
+    updateSkillAdjustment(adjustmentButton.dataset.skillAdjust, Number(adjustmentButton.dataset.adjustment));
+    updateCareerEventCheckPreviews();
+  }
+});
+skillManagementSection.addEventListener("input", (event) => {
+  if (event.target.matches("[data-skill-check-characteristic], [data-skill-check-dm], [data-skill-check-advantage]")) {
+    updateSkillCheckModifiers();
+  }
+});
+skillManagementSection.addEventListener("change", (event) => {
+  if (event.target.matches("[data-skill-check-characteristic], [data-skill-check-dm], [data-skill-check-advantage]")) {
+    updateSkillCheckModifiers();
+  }
+});
+skillManagementSection.addEventListener("click", (event) => {
+  if (event.target.closest("[data-close-skill-check]")) {
+    activeSkillCheck = null;
+    skillCheckPanel.hidden = true;
+    return;
+  }
+  if (event.target.closest("[data-roll-skill-check]")) rollSkillCheck();
+});
+document.querySelector("#roll-custom-unskilled-button").addEventListener("click", () => {
+  const name = document.querySelector("#custom-unskilled-skill").value.trim();
+  if (!name) {
+    showNotice("Enter a skill or task name before setting up an unskilled check.", true);
+    document.querySelector("#custom-unskilled-skill").focus();
+    return;
+  }
+  openSkillCheck(name);
+});
 form.addEventListener("click", (event) => {
   const rollButton = event.target.closest("[data-roll-sides]");
   if (!rollButton) return;

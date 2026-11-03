@@ -294,7 +294,10 @@ h2 { margin: 0; font-size: 23px; font-weight: 500; letter-spacing: -.04em; }
 .generation-row { display: grid; gap: 10px; border: 1px solid var(--line-soft); border-radius: 7px; background: #121915; padding: 12px; }
 .event-checks { display: grid; gap: 8px; }
 .event-check-row { display: grid; grid-template-columns: minmax(0, 1fr) 70px auto 74px; align-items: end; gap: 8px; border: 1px solid var(--line-soft); border-radius: 6px; background: #101713; padding: 9px; }
-.event-check-choice { min-width: 0; }
+.event-check-choice { display: grid; min-width: 0; gap: 5px; margin: 0; border: 0; padding: 0; }
+.event-check-choice legend { margin-bottom: 4px; color: var(--subtle); font-size: 9px; }
+.event-check-option { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 10px; cursor: pointer; }
+.event-check-option input { accent-color: var(--green-strong); }
 .event-check-choice select { width: 100%; min-height: 35px; border: 1px solid #303d34; border-radius: 6px; background: #151d18; color: var(--text); padding: 7px; font-size: 10px; }
 .event-check-name { align-self: center; color: var(--muted); font-size: 10px; }
 .event-check-row > input, .event-check-dm input, .event-injury-controls input { width: 100%; min-height: 35px; border: 1px solid #303d34; border-radius: 6px; background: #151d18; color: var(--text); padding: 7px; text-align: center; }
@@ -310,6 +313,34 @@ h2 { margin: 0; font-size: 23px; font-weight: 500; letter-spacing: -.04em; }
 .benefit-row textarea[readonly] { color: var(--green); }
 .career-skill-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .career-skill-row > .section-helper { line-height: 1.5; }
+.skill-management-section { display: grid; gap: 10px; }
+.skill-cap-status { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.skill-cap-status.over-limit { color: var(--danger); }
+.skill-group { border: 1px solid var(--line-soft); border-radius: 7px; background: #121915; }
+.skill-group > summary { display: flex; align-items: center; justify-content: space-between; padding: 11px 12px; color: #c4d1c3; cursor: pointer; font-size: 11px; }
+.skill-group > summary strong { color: var(--green); font-family: "DM Mono", monospace; font-size: 10px; }
+.skill-group-helper { margin: 0 12px 9px; line-height: 1.5; }
+.skill-list { display: grid; gap: 6px; padding: 0 9px 9px; }
+.skill-row { display: flex; align-items: center; gap: 9px; min-width: 0; border: 1px solid var(--line-soft); border-radius: 6px; background: #101713; padding: 8px; }
+.skill-roll-button { display: grid; flex: 1 1 auto; min-width: 0; gap: 3px; border: 0; background: none; padding: 0; color: var(--text); text-align: left; cursor: pointer; }
+.skill-roll-button:hover .skill-row-name { color: var(--green); }
+.skill-row-name { font-size: 11px; }
+.skill-row small, .skill-source, .skill-trait-hint { color: var(--subtle); font-size: 9px; line-height: 1.4; }
+.skill-trait-hint { flex: 0 1 180px; }
+.skill-adjustments { display: flex; gap: 4px; }
+.skill-rank-button { width: 27px; height: 27px; border: 1px solid var(--line); border-radius: 5px; background: #151d18; color: var(--text); cursor: pointer; }
+.skill-rank-button:disabled { opacity: .4; cursor: default; }
+.skill-empty-state { margin: 0; padding: 4px; }
+.unskilled-check { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 9px; }
+.skill-check-panel { display: grid; gap: 10px; border: 1px solid var(--line); border-radius: 7px; background: #121915; padding: 12px; }
+.skill-check-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.skill-check-heading .eyebrow { margin: 0 0 3px; }
+.skill-check-heading h3 { margin: 0; color: var(--text); font-size: 13px; }
+.skill-check-controls { display: grid; grid-template-columns: minmax(130px, 1fr) 90px 90px; gap: 9px; align-items: end; }
+.skill-advantage-toggle { display: flex; grid-column: 1 / -1; align-items: start; gap: 7px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.skill-advantage-toggle input { margin-top: 2px; accent-color: var(--green-strong); }
+.skill-check-modifiers, .skill-check-result { margin: 0; color: var(--amber); font-size: 10px; line-height: 1.5; }
+.skill-check-result { color: var(--green); }
 .generation-row-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .generation-row-heading > strong, .generation-subheading { color: #c4d1c3; font-size: 11px; font-weight: 600; }
 .dice-entry, .benefit-controls { display: flex; align-items: center; gap: 7px; }
@@ -425,6 +456,11 @@ h2 { margin: 0; font-size: 23px; font-weight: 500; letter-spacing: -.04em; }
   .event-check-choice, .event-check-name { grid-column: 1 / -1; }
   .event-check-row .dice-button { grid-column: 1 / 2; }
   .event-check-dm { grid-column: 2 / 3; }
+  .skill-row { flex-wrap: wrap; }
+  .skill-roll-button { flex-basis: calc(100% - 44px); }
+  .skill-trait-hint { flex-basis: 100%; }
+  .skill-check-controls { grid-template-columns: minmax(0, 1fr) 75px 75px; }
+  .unskilled-check { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
