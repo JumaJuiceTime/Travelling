@@ -287,7 +287,12 @@ h2 { margin: 0; font-size: 23px; font-weight: 500; letter-spacing: -.04em; }
 .generation-rule-note { margin: 0 0 12px; line-height: 1.5; }
 .generation-progress { margin: 15px 0 10px; color: var(--green); font-family: "DM Mono", monospace; font-size: 11px; }
 .career-progress-error { margin: 0 0 10px; color: var(--danger); font-size: 11px; line-height: 1.5; }
+.character-form-error { margin: 0 0 12px; border: 1px solid #75463f; border-radius: 6px; background: #2e201e; padding: 10px 12px; color: #f0b5aa; font-size: 11px; line-height: 1.5; }
 .generation-rows { display: grid; gap: 9px; }
+.term-generation-group { display: grid; gap: 9px; }
+.life-event-box { display: grid; gap: 10px; border: 1px solid #435341; border-radius: 7px; background: #151d17; padding: 11px; }
+.life-event-result { margin: 0; color: var(--amber); font-size: 11px; line-height: 1.5; }
+.career-description { line-height: 1.5; }
 .career-progression-actions, .career-switch-picker { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin-top: 11px; }
 .career-switch-picker .field { min-width: 180px; }
 .career-switch-picker > .section-helper { flex: 1 1 100%; line-height: 1.5; }

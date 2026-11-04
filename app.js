@@ -6,6 +6,27 @@ const BUILT_IN_ITEM_IDS = new Set(BUILT_IN_ITEMS.map((item) => item.id));
 const ATTRIBUTE_KEYS = ["str", "dex", "end", "int", "edu", "soc"];
 const ATTRIBUTE_LABELS = ["STR", "DEX", "END", "INT", "EDU", "SOC"];
 const MILITARY_CAREERS = new Set(["army", "marine", "navy"]);
+const LIFE_EVENT_DETAILS = {
+  2: "Sickness or Injury: roll on the Injury table.",
+  3: "Birth or Death: someone close to the character dies or is born.",
+  4: "Good Fortune: gain DM+1 on one Cash Benefit roll.",
+  5: "Ending of Relationship: change a Contact into an Enemy; if you have no Contact, gain an Enemy.",
+  6: "Improved Relationship: change an Enemy into a Contact; if you have no Enemy, gain a Contact.",
+  7: "New Relationship: become involved in a romantic relationship.",
+  8: "Travel: gain Steward 1 or Carousing 1.",
+  9: "Study: gain +1 EDU.",
+  10: "Crime: lose one Benefit roll and roll Admin 8+; failure means spending the next Term in Prison.",
+  11: "Cybersurgery: gain commonplace cybernetics worth Cr 5,000.",
+  12: "Unusual Event: roll 1D6 on the Unusual Event table."
+};
+const UNUSUAL_EVENT_DETAILS = {
+  1: "Missing Time: lose 3D days that you cannot remember.",
+  2: "Psionics: gain basic Psionic training.",
+  3: "Trait: gain a free Trait.",
+  4: "Underworld Contacts: gain a senior criminal Contact.",
+  5: "Contact with Government or Corporations: gain a senior government or corporate VIP as a Contact.",
+  6: "Alien Artifact: find an alien artifact; its nature is up to the Referee."
+};
 const TRAIT_NAMES = [
   "Acrobat", "Animal Affinity", "Awareness", "Born Athlete", "Combat Medic", "Explosive Expert",
   "Ghost", "Hacker", "Hunter", "Juice", "Legal Eagle", "Machine Whisperer", "Master Tracker",
@@ -56,11 +77,12 @@ const homeworldSkillInput = document.querySelector("#homeworld-skill");
 const careerTermsInput = document.querySelector("#career-terms");
 const bonusBenefitsInput = document.querySelector("#bonus-benefits");
 const agingTechDmInput = document.querySelector("#aging-tech-dm");
+const rollTermLengthInput = document.querySelector("#roll-term-length");
 const termEventRows = document.querySelector("#term-event-rows");
+const careerSkillRows = termEventRows;
 const agingRows = document.querySelector("#aging-rows");
 const benefitRows = document.querySelector("#benefit-rows");
 const traitRows = document.querySelector("#trait-rows");
-const careerSkillRows = document.querySelector("#career-skill-rows");
 const proficientSkillList = document.querySelector("#proficient-skill-list");
 const remainingSkillList = document.querySelector("#remaining-skill-list");
 const skillCheckPanel = document.querySelector("#skill-check-panel");
@@ -238,6 +260,17 @@ function isValidGeneration(generation) {
     && (entry.injury === undefined || typeof entry.injury === "boolean")
     && (entry.injuryRoll === undefined || isValidRoll(entry.injuryRoll, 2, 12))
     && (entry.injuryDetailRoll === undefined || isValidRoll(entry.injuryDetailRoll, 1, 6))
+    && (entry.lifeRoll === undefined || isValidRoll(entry.lifeRoll, 2, 12))
+    && (entry.lifeDetailRoll === undefined || isValidRoll(entry.lifeDetailRoll, 1, 6))
+    && (entry.lifeSkillAward === undefined || isText(entry.lifeSkillAward))
+    && (entry.lifeTraitAward === undefined || isText(entry.lifeTraitAward))
+    && (entry.termYears === undefined || isValidRoll(entry.termYears, 1, 6))
+    && (entry.lifeChecks === undefined || (Array.isArray(entry.lifeChecks) && entry.lifeChecks.every((check) => check
+      && isText(check.skill)
+      && isValidRoll(check.roll, 2, 12)
+      && Number.isInteger(check.dm)
+      && check.dm >= -20
+      && check.dm <= 20)))
     && (entry.skillAwards === undefined || (Array.isArray(entry.skillAwards) && entry.skillAwards.every(isText)))
     && (entry.skillAwardCheckIndex === undefined || entry.skillAwardCheckIndex === null
       || (Number.isInteger(entry.skillAwardCheckIndex) && entry.skillAwardCheckIndex >= 0))
@@ -264,6 +297,7 @@ function isValidGeneration(generation) {
     && Number.isInteger(generation.agingTechDm)
     && generation.agingTechDm >= 0
     && generation.agingTechDm <= 3
+    && (generation.rollTermLength === undefined || typeof generation.rollTermLength === "boolean")
     && isText(generation.homeworldType)
     && isText(generation.homeworldSkill)
     && (generation.homeworldType === ""
@@ -308,7 +342,10 @@ function isValidGeneration(generation) {
           && (entry.career === undefined || isText(entry.career))
           && isText(entry.service)
           && Array.isArray(entry.picks)
-          && entry.picks.every(isText))));
+          && entry.picks.every(isText)
+          && (entry.characteristicIncrease === undefined
+            || entry.characteristicIncrease === ""
+            || ATTRIBUTE_KEYS.includes(entry.characteristicIncrease)))));
 }
 
 function saveCharacters() {
@@ -371,6 +408,13 @@ function render() {
   grid.hidden = filtered.length === 0;
   grid.innerHTML = filtered.map(renderCard).join("");
   renderItems();
+}
+
+function setCharacterFormError(message = "") {
+  const error = document.querySelector("#character-form-error");
+  error.textContent = message;
+  error.hidden = message === "";
+  if (message) error.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 
 function renderCard(character) {
@@ -761,11 +805,40 @@ function getCareerDefinition(careerName) {
   return careerKey ? CAREER_DATA[careerKey] : null;
 }
 
+function updateCareerDescription() {
+  const careerName = document.querySelector("#character-career").value.trim();
+  const career = getCareerDefinition(careerName);
+  const description = career?.description || (careerName
+    ? "No description is available for this career."
+    : "Choose a career to see what the role involves.");
+  const descriptionElement = document.querySelector("#career-description");
+  descriptionElement.textContent = description;
+  document.querySelector("#character-career").title = career?.description || "";
+}
+
+function getCharacteristicScore(key, throughTerm = Number.POSITIVE_INFINITY) {
+  const baseScore = Number(form.elements.namedItem(key).value || 0);
+  if (editingCharacterId) return baseScore;
+  const generation = readGeneration();
+  const careerIncreases = generation.careerSkills?.slice(0, throughTerm)
+    .filter((entry) => entry.characteristicIncrease === key).length || 0;
+  const lifeEventIncreases = key === "edu"
+    ? generation.events?.slice(0, throughTerm).filter((entry) => Number(entry.lifeRoll) === 9).length || 0
+    : 0;
+  return baseScore + careerIncreases + lifeEventIncreases;
+}
+
 function getCareerEventEffect(careerName, roll) {
   const career = getCareerDefinition(careerName);
   return career?.eventDetails?.[roll] || (career?.eventNames?.[roll]
     ? `${career.eventNames[roll]}. See the ${careerName} career rules for this event's effects.`
     : "");
+}
+
+function getLifeEventEffect(roll, detailRoll) {
+  const effect = LIFE_EVENT_DETAILS[Number(roll)] || "";
+  if (Number(roll) !== 12 || !detailRoll) return effect;
+  return `${effect} ${UNUSUAL_EVENT_DETAILS[Number(detailRoll)] || ""}`.trim();
 }
 
 function getCareerEventChecks(effect) {
@@ -862,7 +935,7 @@ function getEventCheckResult(check, selectedSkill, roll, dm, modifiers = {}) {
   const kind = modifiers.kind || option.kind;
   const skillLevel = Math.max(0, Number(modifiers.skillLevel || 0));
   const characteristicDm = kind === "characteristic"
-    ? getCharacteristicDm(Number(form.elements.namedItem(option.skill.toLocaleLowerCase()).value || 0))
+    ? getCharacteristicDm(getCharacteristicScore(option.skill.toLocaleLowerCase(), modifiers.throughTerm))
     : 0;
   const skillDm = kind === "skill" ? skillLevel : 0;
   const total = Number(roll) + Number(dm || 0) + characteristicDm + skillDm;
@@ -961,8 +1034,14 @@ function getGenerationSkillRanks(generation, careerName, throughTerm = Number.PO
     if (index >= throughTerm) return;
     const termCareer = entry.career || careerName;
     const startsCareer = !previousCareer || termCareer.toLocaleLowerCase() !== previousCareer.toLocaleLowerCase();
-    if (entry.term === 1) add(entry.service);
-    else if (startsCareer && entry.service) add(entry.service, 0);
+    if (entry.term === 1) {
+      const firstCareer = getCareerDefinition(termCareer);
+      firstCareer?.service.forEach((skill) => add(skill, 0));
+      add(entry.service);
+    } else if (startsCareer) {
+      const newCareer = getCareerDefinition(termCareer);
+      newCareer?.service.forEach((skill) => add(skill, 0));
+    }
     entry.picks.forEach((skill) => add(skill));
     const career = getCareerDefinition(termCareer);
     if (career) {
@@ -981,7 +1060,8 @@ function getGenerationSkillRanks(generation, careerName, throughTerm = Number.PO
       const awardCheckResult = awardCheck && parsedAwardCheck
         ? getEventCheckResult(parsedAwardCheck, awardCheck.skill, awardCheck.roll, awardCheck.dm, {
           skillLevel: ranks.get(canonicalSkillName(awardCheck.skill).toLocaleLowerCase())?.level || 0,
-          kind: awardCheck.kind
+          kind: awardCheck.kind,
+          throughTerm: index + 1
         })
         : "";
       if (!event.skillAwardRequiresSuccess || awardCheckResult.startsWith("Success")) {
@@ -994,7 +1074,8 @@ function getGenerationSkillRanks(generation, careerName, throughTerm = Number.PO
       if (!parsedCheck) return;
       const result = getEventCheckResult(parsedCheck, check.skill, check.roll, check.dm, {
         skillLevel: ranks.get(canonicalSkillName(check.skill).toLocaleLowerCase())?.level || 0,
-        kind: check.kind
+        kind: check.kind,
+        throughTerm: index + 1
       });
       const outcomeAwardsRolledSkill = (outcome) => /(?:gain|increase|improve)\w*[^.;]{0,50}\bskill\b[^.;]{0,30}\b(?:rolled|tested)\b/i.test(outcome);
       const success = result.startsWith("Success");
@@ -1012,6 +1093,7 @@ function getGenerationSkillRanks(generation, careerName, throughTerm = Number.PO
       const namedAwards = getNamedSkillAwards(eventEffect);
       if (namedAwards.length === 1) add(namedAwards[0]);
     }
+    if (Number(event?.lifeRoll) === 8 && event.lifeSkillAward) add(event.lifeSkillAward);
     previousCareer = termCareer;
   });
   if (careerSkills.length && careerSkills.length <= throughTerm) {
@@ -1050,7 +1132,7 @@ function getSkillRankBeforeEventCheck(generation, eventIndex, checkIndex, skillN
 function getFirstTermSkillViolations(generation) {
   const firstTerm = generation.careerSkills?.[0];
   if (!firstTerm) return [];
-  return [...getGenerationSkillRanks(generation, generation.trackedCareer || firstTerm.career).entries()]
+  return [...getGenerationSkillRanks(generation, generation.trackedCareer || firstTerm.career, 1).entries()]
     .filter(([, skill]) => skill.level > 2)
     .map(([skill]) => skill);
 }
@@ -1081,14 +1163,14 @@ function getCurrentSkillRanks() {
 }
 
 function updateDerivedCharacteristics() {
-  const end = Number(form.elements.namedItem("end").value || 0);
+  const end = getCharacteristicScore("end");
   const skillRanks = getCurrentSkillRanks();
   const athletics = skillRanks.get("athletics")?.level || 0;
   const stamina = end + athletics;
   document.querySelector("#derived-stamina").textContent = String(stamina);
   document.querySelector("#derived-lifeblood").textContent = String(stamina * 2);
   const totalRanks = [...skillRanks.values()].reduce((total, skill) => total + skill.level, 0);
-  const skillLimit = Number(form.elements.namedItem("int").value || 0) + Number(form.elements.namedItem("edu").value || 0);
+  const skillLimit = getCharacteristicScore("int") + getCharacteristicScore("edu");
   const skillRankDisplay = document.querySelector("#derived-skill-ranks");
   skillRankDisplay.textContent = `${totalRanks} / ${skillLimit}`;
   skillRankDisplay.classList.toggle("over-limit", totalRanks > skillLimit);
@@ -1115,9 +1197,10 @@ function getAllSkillNames(skillRanks = getCurrentSkillRanks()) {
 }
 
 function getSkillTraitAdvantages(skill) {
-  const traits = editingCharacterId
-    ? characters.find((character) => character.id === editingCharacterId)?.generation?.traits || []
-    : readGeneration().traits || [];
+  const generation = editingCharacterId
+    ? characters.find((character) => character.id === editingCharacterId)?.generation || {}
+    : readGeneration();
+  const traits = [...(generation.traits || []), ...(generation.events || []).map((entry) => entry.lifeTraitAward).filter(Boolean)];
   const available = SKILL_ADVANTAGE_TRAITS[canonicalSkillName(skill)] || [];
   return available.filter((trait) => traits.includes(trait));
 }
@@ -1181,7 +1264,7 @@ function updateSkillAdjustment(skillName, adjustment) {
     const baseRanks = getGenerationSkillRanks({ ...generation, skillAdjustments: [] }, trackedCareerName);
     const baseLevel = baseRanks.get(key)?.level || 0;
     const totalRanks = [...getCurrentSkillRanks().values()].reduce((total, skill) => total + skill.level, 0);
-    const skillLimit = Number(form.elements.namedItem("int").value || 0) + Number(form.elements.namedItem("edu").value || 0);
+    const skillLimit = getCharacteristicScore("int") + getCharacteristicScore("edu");
     if (adjustment > 0 && careerMusteredOut && totalRanks >= skillLimit) {
       showNotice("This character has reached the INT + EDU skill-rank limit for character creation.", true);
       return;
@@ -1228,7 +1311,7 @@ function updateSkillCheckModifiers() {
   const skill = ranks.get(activeSkillCheck.name.toLocaleLowerCase());
   const level = skill?.level ?? -1;
   const characteristic = skillCheckPanel.querySelector("[data-skill-check-characteristic]").value;
-  const characteristicScore = Number(form.elements.namedItem(characteristic).value || 0);
+  const characteristicScore = getCharacteristicScore(characteristic);
   const characteristicDm = getCharacteristicDm(characteristicScore);
   const jackOfAllTrades = ranks.get("jack of all trades")?.level || 0;
   const unskilledDm = level < 0 && activeSkillCheck.name !== "Athletics" ? -Math.max(0, 3 - jackOfAllTrades) : 0;
@@ -1245,7 +1328,7 @@ function rollSkillCheck() {
   const skill = ranks.get(activeSkillCheck.name.toLocaleLowerCase());
   const level = skill?.level ?? -1;
   const characteristic = skillCheckPanel.querySelector("[data-skill-check-characteristic]").value;
-  const score = Number(form.elements.namedItem(characteristic).value || 0);
+  const score = getCharacteristicScore(characteristic);
   const characteristicDm = getCharacteristicDm(score);
   const jackOfAllTrades = ranks.get("jack of all trades")?.level || 0;
   const unskilledDm = level < 0 && activeSkillCheck.name !== "Athletics" ? -Math.max(0, 3 - jackOfAllTrades) : 0;
@@ -1282,13 +1365,15 @@ function readGeneration() {
     terms,
     bonusBenefits,
     agingTechDm: numericValue(agingTechDmInput, 3),
+    rollTermLength: rollTermLengthInput.checked,
     trackedCareer: careerTrackingEnabled ? trackedCareerName : undefined,
     careerSkills: careerTrackingEnabled
       ? Array.from(careerSkillRows.querySelectorAll("[data-career-term]"), (row) => ({
         term: Number(row.dataset.careerTerm),
         career: row.dataset.careerName || "",
         service: row.querySelector("[data-career-service]")?.value || "",
-        picks: Array.from(row.querySelectorAll("[data-career-pick]"), (select) => select.value).filter(Boolean)
+        picks: Array.from(row.querySelectorAll("[data-career-pick]"), (select) => select.value).filter(Boolean),
+        characteristicIncrease: row.querySelector("[data-career-characteristic]")?.value || ""
       }))
       : undefined,
     events: Array.from(termEventRows.querySelectorAll("[data-event-roll]"), (input) => {
@@ -1303,6 +1388,11 @@ function readGeneration() {
         injury: Boolean(injuryRoll) || input.closest("[data-event-card]")?.dataset.injuryRecorded === "true",
         injuryRoll,
         injuryDetailRoll: termEventRows.querySelector(`[data-injury-detail-roll="${eventIndex}"]`)?.value || "",
+        lifeRoll: termEventRows.querySelector(`[data-life-event-roll="${eventIndex}"]`)?.value || "",
+        lifeDetailRoll: termEventRows.querySelector(`[data-life-event-detail-roll="${eventIndex}"]`)?.value || "",
+        lifeSkillAward: termEventRows.querySelector(`[data-life-skill-award="${eventIndex}"]`)?.value || "",
+        lifeTraitAward: termEventRows.querySelector(`[data-life-trait-award="${eventIndex}"]`)?.value || "",
+        termYears: termEventRows.querySelector(`[data-term-years="${eventIndex}"]`)?.value || "",
         skillAwards: skillAwardSelect?.value ? [skillAwardSelect.value] : [],
         skillAwardCheckIndex: skillAwardSelect?.dataset.awardCheckIndex === "" || !skillAwardSelect
           ? null
@@ -1310,7 +1400,13 @@ function readGeneration() {
         skillAwardRequiresSuccess: Boolean(skillAwardSelect && skillAwardSelect.dataset.awardCheckIndex !== ""),
         skillChoicesLocked: Boolean(input.closest("[data-event-card]")?.dataset.skillChoicesLocked === "true"
           || isValidManualRoll(input.value, 2, 12)),
-        checks: Array.from(termEventRows.querySelectorAll(`[data-check-event="${eventIndex}"]`), (checkRow) => ({
+        checks: Array.from(termEventRows.querySelectorAll(`[data-check-event="${eventIndex}"][data-check-source="career"]`), (checkRow) => ({
+          skill: getSelectedEventCheckSkill(checkRow) || checkRow.dataset.checkSkill || "",
+          kind: checkRow.querySelector("[data-event-check-skill]:checked")?.dataset.kind || checkRow.dataset.checkKind || "skill",
+          roll: checkRow.querySelector("[data-event-check-roll]")?.value || "",
+          dm: Number(checkRow.querySelector("[data-event-check-dm]")?.value || 0)
+        })),
+        lifeChecks: Array.from(termEventRows.querySelectorAll(`[data-check-event="${eventIndex}"][data-check-source="life"]`), (checkRow) => ({
           skill: getSelectedEventCheckSkill(checkRow) || checkRow.dataset.checkSkill || "",
           kind: checkRow.querySelector("[data-event-check-skill]:checked")?.dataset.kind || checkRow.dataset.checkKind || "skill",
           roll: checkRow.querySelector("[data-event-check-roll]")?.value || "",
@@ -1340,15 +1436,20 @@ function readGeneration() {
 }
 
 function getTraitDescription(traitName) {
-  const details = TRAIT_DETAILS[traitName];
+  const details = getTraitDetails(traitName);
   if (!details) return traitName ? "No description is available for this saved trait." : "Choose a trait to see its prerequisite and effect.";
   return `Prerequisite: ${details.prerequisite} Effect: ${details.effect}`;
+}
+
+function getTraitDetails(traitName) {
+  const normalizedName = String(traitName || "").replace(/[’‘]/g, "'");
+  return TRAIT_DETAILS[normalizedName];
 }
 
 function updateTraitDescriptions() {
   traitRows.querySelectorAll("[data-trait]").forEach((select) => {
     const description = traitRows.querySelector(`#${select.dataset.traitDescription}`);
-    const details = TRAIT_DETAILS[select.value];
+    const details = getTraitDetails(select.value);
     const text = getTraitDescription(select.value);
     description.textContent = text;
     select.title = details ? text : "";
@@ -1380,8 +1481,9 @@ function renderCharacterSheetRecord(character) {
     generation.homeworldType ? `Homeworld type: ${escapeHtml(generation.homeworldType)}` : "",
     generation.homeworldSkill ? `Homeworld skill: ${escapeHtml(generation.homeworldSkill)} 1` : ""
   ].filter(Boolean);
-  const traitEntries = (generation.traits || []).map((trait) => {
-    const details = TRAIT_DETAILS[trait];
+  const savedTraits = [...(generation.traits || []), ...(generation.events || []).map((entry) => entry.lifeTraitAward).filter(Boolean)];
+  const traitEntries = [...new Set(savedTraits)].map((trait) => {
+    const details = getTraitDetails(trait);
     const description = details
       ? `<small>Prerequisite: ${escapeHtml(details.prerequisite)} Effect: ${escapeHtml(details.effect)}</small>`
       : "<small>No description is available for this saved trait.</small>";
@@ -1406,6 +1508,23 @@ function renderCharacterSheetRecord(character) {
       });
       records.push(`<strong>Term ${index + 1} throw:</strong> ${escapeHtml(result)}`);
     });
+    const lifeEffect = getLifeEventEffect(entry.lifeRoll, entry.lifeDetailRoll);
+    if (isValidManualRoll(entry.lifeRoll, 2, 12)) {
+      records.push(`<strong>Term ${index + 1} Life Event · Roll ${escapeHtml(entry.lifeRoll)}:</strong> ${escapeHtml(lifeEffect)}`);
+      const lifeChecks = getCareerEventChecks(lifeEffect);
+      (entry.lifeChecks || []).forEach((check, checkIndex) => {
+        if (!check.roll || !lifeChecks[checkIndex]) return;
+        const option = lifeChecks[checkIndex].options.find((candidate) => candidate.skill === check.skill) || lifeChecks[checkIndex].options[0];
+        const result = getEventCheckResult(lifeChecks[checkIndex], check.skill, check.roll, check.dm, {
+          kind: check.kind || option.kind,
+          skillLevel: option.kind === "skill" ? savedRanks.get(canonicalSkillName(check.skill).toLocaleLowerCase())?.level || 0 : 0
+        });
+        records.push(`<strong>Term ${index + 1} Life Event throw:</strong> ${escapeHtml(result)}`);
+      });
+    }
+    if (isValidManualRoll(entry.termYears, 1, 6)) {
+      records.push(`<strong>Term ${index + 1} length:</strong> ${escapeHtml(entry.termYears)} years`);
+    }
     if (isValidManualRoll(entry.injuryRoll, 2, 12)) {
       const endDm = getCharacteristicDm(Number(character.attributes.end || 0));
       const careerDm = getInjuryCareerDm(entry.career || character.career);
@@ -1439,15 +1558,17 @@ function renderCharacterSheetRecord(character) {
 
 function renderCareerSkillRows(generation) {
   const careerName = document.querySelector("#character-career").value.trim();
-  const canUseAdvanced = Number(form.elements.namedItem("edu").value || 0) >= 8;
   const requireCareerChoices = careerTrackingEnabled;
   let previousCareer = "";
   let termsInCareer = 0;
-  careerSkillRows.innerHTML = Array.from({ length: generation.terms }, (_, index) => {
+  return Array.from({ length: generation.terms }, (_, index) => {
     const term = index + 1;
     const entry = generation.careerSkills?.[index] || { service: "", picks: [] };
     const eventEntry = generation.events?.[index];
     const locked = Boolean(eventEntry?.skillChoicesLocked || isValidManualRoll(eventEntry?.roll, 2, 12));
+    const educationIncreases = generation.careerSkills?.slice(0, index + 1)
+      .filter((termEntry) => termEntry.characteristicIncrease === "edu").length || 0;
+    const canUseAdvanced = Number(form.elements.namedItem("edu").value || 0) + educationIncreases >= 8;
     const termCareerName = entry.career || careerName;
     const career = getCareerDefinition(termCareerName);
     if (termCareerName.toLocaleLowerCase() === previousCareer.toLocaleLowerCase()) termsInCareer += 1;
@@ -1478,7 +1599,9 @@ function renderCareerSkillRows(generation) {
         }).join("")}</optgroup>`
       )).join("")}`;
     };
-    const pickCount = term <= 3 ? 2 : 1;
+    const skillLevelCount = term <= 3 ? 2 : 1;
+    const characteristicIncrease = entry.characteristicIncrease || "";
+    const pickCount = skillLevelCount - (characteristicIncrease ? 1 : 0);
     const allowedPicks = entry.picks.map((skill) => (
       !canUseAdvanced && career.advanced.includes(skill)
         && !career.service.includes(skill) && !career.specialist.includes(skill)
@@ -1492,16 +1615,23 @@ function renderCareerSkillRows(generation) {
     const rankAttribute = career.rankAttributes?.[rankIncrease] || "";
     const startsNewCareer = termsInCareer === 1;
     const serviceRow = startsNewCareer
-      ? `<label class="field"><span>${term === 1 ? "Term 1 service skill · level 1" : "New-career service skill · level 0"}</span>
+      ? `<label class="field"><span>${term === 1 ? "Choose one Service skill · level 1" : "New-career Service skill · level 0"}</span>
           <select data-career-service aria-label="Term ${term} service skill" ${requireCareerChoices ? "required" : ""} ${locked ? "disabled" : ""}>${skillOptions(entry.service, true)}</select>
         </label>`
       : "";
     const pickRows = Array.from({ length: pickCount }, (_, pickIndex) => `
-      <label class="field"><span>Skill level ${pickIndex + 1} of ${pickCount}</span>
+      <label class="field"><span>Skill level ${pickIndex + 1} of ${skillLevelCount}</span>
         <select data-career-pick aria-label="Term ${term} skill choice ${pickIndex + 1}" ${requireCareerChoices ? "required" : ""} ${locked ? "disabled" : ""}>
           ${skillOptions(allowedPicks[pickIndex] || "")}
         </select>
       </label>`).join("");
+    const characteristicOptions = `<option value="">Keep all skill levels</option>${ATTRIBUTE_KEYS.map((key) => (
+      `<option value="${key}" ${characteristicIncrease === key ? "selected" : ""}>${key.toUpperCase()} +1</option>`
+    )).join("")}`;
+    const characteristicChoice = `<label class="field field-wide"><span>Optional: spend one skill level to improve a characteristic</span>
+      <select data-career-characteristic aria-label="Term ${term} characteristic increase" ${locked ? "disabled" : ""}>${characteristicOptions}</select>
+      <small class="field-helper">Choose one characteristic for +1 instead of one skill level this term.</small>
+    </label>`;
     const skillCap = term === 1 ? "Skill levels cannot exceed level 2 during the first term." : "";
     const rankInfo = rankIncrease ? [
       rankSkills ? `Rank ${rank} bonus: ${escapeHtml(rankSkills)} 1.` : "",
@@ -1509,14 +1639,13 @@ function renderCareerSkillRows(generation) {
     ].filter(Boolean).join(" ") : "";
     return `<article class="generation-row career-skill-row" data-career-term="${term}" data-career-name="${escapeHtml(termCareerName)}" data-skill-choices-locked="${locked}">
       <div class="generation-row-heading"><strong>Term ${term} · ${escapeHtml(termCareerName)} skill choices</strong></div>
-      <div class="form-grid career-skill-grid">${serviceRow}${pickRows}</div>
-      <p class="section-helper">${locked ? "Skill choices locked because this term's event has been rolled. " : ""}${skillCap} ${rankInfo}</p>
+      <div class="form-grid career-skill-grid">${serviceRow}${pickRows}${characteristicChoice}</div>
+      <p class="section-helper">${term === 1 ? "All other Service skills start at level 0. " : ""}${locked ? "Skill choices locked because this term's event has been rolled. " : ""}${skillCap} ${rankInfo}</p>
     </article>`;
-  }).join("");
-  updateDerivedCharacteristics();
+  });
 }
 
-function renderCareerEventChecks(eventIndex, effect, savedChecks = []) {
+function renderCareerEventChecks(eventIndex, effect, savedChecks = [], source = "career") {
   const checks = getCareerEventChecks(effect);
   return checks.map((check, checkIndex) => {
     const saved = savedChecks[checkIndex] || {};
@@ -1532,11 +1661,11 @@ function renderCareerEventChecks(eventIndex, effect, savedChecks = []) {
           )).join("")}
         </fieldset>`
       : `<strong class="event-check-name">${escapeHtml(option.skill)} ${option.target}+</strong>`;
-    return `<div class="event-check-row" data-check-event="${eventIndex}" data-check-index="${checkIndex}" data-check-skill="${escapeHtml(option.skill)}" data-check-kind="${option.kind}">
+    return `<div class="event-check-row" data-check-event="${eventIndex}" data-check-source="${source}" data-check-index="${checkIndex}" data-check-skill="${escapeHtml(option.skill)}" data-check-kind="${option.kind}">
       ${choice}
-      <label class="visually-hidden" for="event-check-roll-${eventIndex}-${checkIndex}">2D6 result for ${escapeHtml(option.skill)} check</label>
-      <input id="event-check-roll-${eventIndex}-${checkIndex}" data-event-check-roll type="number" min="2" max="12" value="${escapeHtml(saved.roll || "")}" inputmode="numeric" placeholder="2D6">
-      <button class="button button-quiet dice-button" type="button" data-roll-sides="2" data-roll-target="event-check-roll-${eventIndex}-${checkIndex}">Roll 2D6</button>
+      <label class="visually-hidden" for="${source}-event-check-roll-${eventIndex}-${checkIndex}">2D6 result for ${escapeHtml(option.skill)} check</label>
+      <input id="${source}-event-check-roll-${eventIndex}-${checkIndex}" data-event-check-roll type="number" min="2" max="12" value="${escapeHtml(saved.roll || "")}" inputmode="numeric" placeholder="2D6" ${isValidManualRoll(saved.roll, 2, 12) ? "data-roll-locked=\"true\" disabled" : ""}>
+      <button class="button button-quiet dice-button" type="button" data-roll-sides="2" data-roll-target="${source}-event-check-roll-${eventIndex}-${checkIndex}" ${isValidManualRoll(saved.roll, 2, 12) ? "disabled" : ""}>Roll 2D6</button>
       <label class="event-check-dm"><span>DM</span>
         <input data-event-check-dm type="number" min="-20" max="20" value="${escapeHtml(saved.dm ?? 0)}" inputmode="numeric">
       </label>
@@ -1545,19 +1674,27 @@ function renderCareerEventChecks(eventIndex, effect, savedChecks = []) {
   }).join("");
 }
 
-function renderEventSkillAward(eventIndex, effect, savedAwards = [], checkCount = 0) {
+function renderEventSkillAward(eventIndex, effect, savedAwards = [], checkCount = 0, careerName = "") {
   const outcomes = getCareerEventChecks(effect).map((check) => check.successOutcome);
   const awardText = outcomes.length ? outcomes.join(" ") : effect;
   const namedChoices = getNamedSkillAwards(awardText);
+  const categoryMatch = awardText.match(/\b(?:one|a)\s+(?:(\w+)\s+)?(service|specialist|advanced education)\s+skills?\b/i);
+  const categoryCareer = getCareerDefinition(categoryMatch?.[1] || careerName);
+  const category = categoryMatch?.[2].toLocaleLowerCase();
+  const categoryChoices = category === "service" ? categoryCareer?.service
+    : category === "specialist" ? categoryCareer?.specialist
+      : category === "advanced education" ? categoryCareer?.advanced
+        : null;
   const hasGenericAward = /(?:any|one|a)\s+(?:one\s+)?skill[^.;]{0,50}(?:level|increase)|free skill level|skill level/i.test(awardText);
-  const requiresSelection = (hasGenericAward && !namedChoices.length) || namedChoices.length > 1;
+  const requiresSelection = Boolean(categoryMatch) || (hasGenericAward && !namedChoices.length) || namedChoices.length > 1;
   if (!requiresSelection) return "";
   const selectedSkill = savedAwards[0] || "";
   const awardCheckIndex = checkCount ? 0 : "";
-  const options = namedChoices.length ? [...new Set(namedChoices)] : SKILL_NAMES;
+  const options = categoryChoices?.length ? categoryChoices
+    : namedChoices.length ? [...new Set(namedChoices)] : SKILL_NAMES;
   return `<label class="field event-skill-award">
     <span>${checkCount ? "Skill to gain on a successful check" : "Skill to gain from this event"}</span>
-    <select data-event-skill-award="${eventIndex}" data-award-check-index="${awardCheckIndex}">
+    <select data-event-skill-award="${eventIndex}" data-award-check-index="${awardCheckIndex}" required>
       <option value="">Choose a skill</option>
       ${options.map((skill) => `<option value="${escapeHtml(skill)}" ${selectedSkill === skill ? "selected" : ""}>${escapeHtml(skill)}</option>`).join("")}
     </select>
@@ -1566,52 +1703,111 @@ function renderEventSkillAward(eventIndex, effect, savedAwards = [], checkCount 
 
 function renderGenerationRows(generation = readGeneration()) {
   const { terms, bonusBenefits, agingTechDm } = generation;
-  renderCareerSkillRows(generation);
+  const skillRows = renderCareerSkillRows(generation);
   termEventRows.innerHTML = Array.from({ length: terms }, (_, index) => {
     const entry = generation.events[index] || { roll: "", outcome: "", checks: [] };
     const number = index + 1;
     const termCareer = entry.career || generation.careerSkills?.[index]?.career || document.querySelector("#character-career").value.trim();
     const eventEffect = entry.roll ? getCareerEventEffect(termCareer, Number(entry.roll)) : "";
+    const eventName = getCareerDefinition(termCareer)?.eventNames?.[Number(entry.roll)] || "";
+    const lifeEvent = eventName === "Life Event";
+    const lifeEffect = lifeEvent && entry.lifeRoll ? getLifeEventEffect(entry.lifeRoll, entry.lifeDetailRoll) : "";
     const eventChecks = eventEffect ? renderCareerEventChecks(index, eventEffect, entry.checks) : "";
     const eventSkillAward = eventEffect
-      ? renderEventSkillAward(index, eventEffect, entry.skillAwards || [], getCareerEventChecks(eventEffect).length)
+      ? renderEventSkillAward(index, eventEffect, entry.skillAwards || [], getCareerEventChecks(eventEffect).length, termCareer)
       : "";
+    const lifeChecks = lifeEffect ? renderCareerEventChecks(index, lifeEffect, entry.lifeChecks || [], "life") : "";
+    const lifeSkillOptions = Number(entry.lifeRoll) === 8
+      ? `<label class="field"><span>Skill gained from Travel</span>
+          <select data-life-skill-award="${index}" required>
+            <option value="">Choose Steward or Carousing</option>
+            <option value="Steward" ${entry.lifeSkillAward === "Steward" ? "selected" : ""}>Steward 1</option>
+            <option value="Carousing" ${entry.lifeSkillAward === "Carousing" ? "selected" : ""}>Carousing 1</option>
+          </select>
+        </label>`
+      : "";
+    const lifeTraitOptions = Number(entry.lifeRoll) === 12 && Number(entry.lifeDetailRoll) === 3
+      ? `<label class="field"><span>Trait gained from the Unusual Event</span>
+          <select data-life-trait-award="${index}" required>
+            <option value="">Choose a trait</option>
+            ${TRAIT_NAMES.map((trait) => `<option value="${escapeHtml(trait)}" ${entry.lifeTraitAward === trait ? "selected" : ""}>${escapeHtml(trait)}</option>`).join("")}
+          </select>
+          <small class="trait-description">${escapeHtml(getTraitDescription(entry.lifeTraitAward || ""))}</small>
+        </label>`
+      : "";
+    const lifeRollLocked = isValidManualRoll(entry.lifeRoll, 2, 12);
+    const lifeDetailLocked = isValidManualRoll(entry.lifeDetailRoll, 1, 6);
+    const termYearsLocked = isValidManualRoll(entry.termYears, 1, 6);
     const injuryRoll = entry.injuryRoll || "";
     const injuryDetailRoll = entry.injuryDetailRoll || "";
-    return `<article class="generation-row" data-event-card="${index}" data-injury-recorded="${entry.injury ? "true" : "false"}" data-skill-choices-locked="${entry.skillChoicesLocked || isValidManualRoll(entry.roll, 2, 12) ? "true" : "false"}">
+    const eventLocked = isValidManualRoll(entry.roll, 2, 12);
+    return `<section class="term-generation-group">${skillRows[index]}
+      <article class="generation-row" data-event-card="${index}" data-injury-recorded="${entry.injury ? "true" : "false"}" data-skill-choices-locked="${entry.skillChoicesLocked || eventLocked ? "true" : "false"}">
       <div class="generation-row-heading"><strong>Term ${number} ${termCareer ? `${escapeHtml(termCareer)} ` : ""}event · 2D6</strong>
         <div class="dice-entry">
           <label class="visually-hidden" for="event-roll-${index}">Term ${number} event roll</label>
-          <input id="event-roll-${index}" data-event-roll="${index}" data-event-career="${escapeHtml(termCareer)}" type="number" min="2" max="12" value="${escapeHtml(entry.roll)}" inputmode="numeric">
-          <button class="button button-quiet dice-button" type="button" data-roll-sides="2" data-roll-target="event-roll-${index}">Roll 2D6</button>
+          <input id="event-roll-${index}" data-event-roll="${index}" data-event-career="${escapeHtml(termCareer)}" type="number" min="2" max="12" value="${escapeHtml(entry.roll)}" inputmode="numeric" ${eventLocked ? "data-roll-locked=\"true\" disabled" : ""}>
+          <button class="button button-quiet dice-button" type="button" data-roll-sides="2" data-roll-target="event-roll-${index}" ${eventLocked ? "disabled" : ""}>Roll 2D6</button>
         </div>
       </div>
+      ${eventLocked ? '<p class="section-helper">Event result locked.</p>' : ""}
       <p class="aging-preview" id="event-result-${index}" aria-live="polite"></p>
       <label class="field"><span>Event checks, choices, and effects</span>
         <textarea id="event-outcome-${index}" data-event-outcome="${index}" data-event-effect="${escapeHtml(entry.effect || eventEffect)}" rows="3" maxlength="1200" placeholder="Roll to display the event result and effects">${escapeHtml(entry.outcome)}</textarea>
       </label>
       <div class="event-checks" data-event-checks="${index}" data-effect="${escapeHtml(eventEffect)}">${eventChecks}</div>
       <div class="event-skill-award-container" data-event-skill-award-container="${index}" data-effect="${escapeHtml(eventEffect)}">${eventSkillAward}</div>
+      ${lifeEvent ? `<section class="life-event-box" data-life-event="${index}" data-effect="${escapeHtml(lifeEffect)}">
+        <div class="generation-row-heading"><strong>Life Event · 2D6</strong>
+          <div class="dice-entry">
+            <label class="visually-hidden" for="life-event-roll-${index}">Term ${number} life event roll</label>
+            <input id="life-event-roll-${index}" data-life-event-roll="${index}" type="number" min="2" max="12" value="${escapeHtml(entry.lifeRoll || "")}" inputmode="numeric" placeholder="2D6" ${lifeRollLocked ? "data-roll-locked=\"true\" disabled" : ""}>
+            <button class="button button-quiet dice-button" type="button" data-roll-sides="2" data-roll-target="life-event-roll-${index}" ${lifeRollLocked ? "disabled" : ""}>Roll 2D6</button>
+          </div>
+        </div>
+        <p class="life-event-result" data-life-event-result="${index}" aria-live="polite">${escapeHtml(lifeEffect)}</p>
+        <div class="event-checks" data-life-event-checks="${index}" data-effect="${escapeHtml(lifeEffect)}">${lifeChecks}</div>
+        ${lifeSkillOptions}
+        ${Number(entry.lifeRoll) === 12 ? `<div class="life-event-detail-controls">
+          <label class="field"><span>Unusual Event · 1D6</span>
+            <div class="event-injury-controls">
+              <input id="life-event-detail-roll-${index}" data-life-event-detail-roll="${index}" type="number" min="1" max="6" value="${escapeHtml(entry.lifeDetailRoll || "")}" inputmode="numeric" placeholder="1D6" ${lifeDetailLocked ? "data-roll-locked=\"true\" disabled" : ""}>
+              <button class="button button-quiet dice-button" type="button" data-roll-sides="1" data-roll-target="life-event-detail-roll-${index}" ${lifeDetailLocked ? "disabled" : ""}>Roll 1D6</button>
+            </div>
+          </label>
+        </div>` : `<div class="life-event-detail-controls" data-life-event-detail-placeholder></div>`}
+        ${lifeTraitOptions}
+      </section>` : ""}
       <section class="event-injury-roll" data-event-injury-roll-row="${index}" ${/injury/i.test(eventEffect) ? "" : "hidden"}>
         <strong>Injury table · END 6+</strong>
         <p class="section-helper">Roll 2D6 or enter your result. The app applies END and career DMs and shows the injury-table outcome.</p>
         <div class="event-injury-controls">
           <label class="visually-hidden" for="injury-roll-${index}">Injury END throw 2D6 result</label>
-          <input id="injury-roll-${index}" data-event-injury-roll="${index}" type="number" min="2" max="12" value="${escapeHtml(injuryRoll)}" inputmode="numeric" placeholder="2D6">
-          <button class="button button-quiet dice-button" type="button" data-roll-sides="2" data-roll-target="injury-roll-${index}">Roll 2D6</button>
+          <input id="injury-roll-${index}" data-event-injury-roll="${index}" type="number" min="2" max="12" value="${escapeHtml(injuryRoll)}" inputmode="numeric" placeholder="2D6" ${isValidManualRoll(injuryRoll, 2, 12) ? "data-roll-locked=\"true\" disabled" : ""}>
+          <button class="button button-quiet dice-button" type="button" data-roll-sides="2" data-roll-target="injury-roll-${index}" ${isValidManualRoll(injuryRoll, 2, 12) ? "disabled" : ""}>Roll 2D6</button>
         </div>
         <p class="injury-roll-result" data-injury-roll-result="${index}" aria-live="polite"></p>
         <div class="event-injury-detail" data-injury-detail-row="${index}" hidden>
           <label class="field"><span>Injury detail · 1D6</span>
             <div class="event-injury-controls">
-              <input id="injury-detail-roll-${index}" data-injury-detail-roll="${index}" type="number" min="1" max="6" value="${escapeHtml(injuryDetailRoll)}" inputmode="numeric" placeholder="1D6">
-              <button class="button button-quiet dice-button" type="button" data-roll-sides="1" data-roll-target="injury-detail-roll-${index}" id="injury-detail-button-${index}">Roll 1D6</button>
+              <input id="injury-detail-roll-${index}" data-injury-detail-roll="${index}" type="number" min="1" max="6" value="${escapeHtml(injuryDetailRoll)}" inputmode="numeric" placeholder="1D6" ${isValidManualRoll(injuryDetailRoll, 1, 6) ? "data-roll-locked=\"true\" disabled" : ""}>
+              <button class="button button-quiet dice-button" type="button" data-roll-sides="1" data-roll-target="injury-detail-roll-${index}" id="injury-detail-button-${index}" ${isValidManualRoll(injuryDetailRoll, 1, 6) ? "disabled" : ""}>Roll 1D6</button>
             </div>
           </label>
           <p class="injury-roll-result" data-injury-detail-result="${index}" aria-live="polite"></p>
         </div>
       </section>
-    </article>`;
+      ${generation.rollTermLength ? `<div class="term-length-controls">
+        <label class="field"><span>Term ${number} length · 1D6 years</span>
+          <div class="event-injury-controls">
+            <input id="term-years-${index}" data-term-years="${index}" type="number" min="1" max="6" value="${escapeHtml(entry.termYears || "")}" inputmode="numeric" placeholder="1D6" ${termYearsLocked ? "data-roll-locked=\"true\" disabled" : ""}>
+            <button class="button button-quiet dice-button" type="button" data-roll-sides="1" data-roll-target="term-years-${index}" ${termYearsLocked ? "disabled" : ""}>Roll 1D6</button>
+          </div>
+        </label>
+        <p class="section-helper">Age after this term: ${18 + generation.events.slice(0, index).reduce((sum, termEvent) => sum + (Number(termEvent.termYears) || 4), 0) + (Number(entry.termYears) || 0)}.</p>
+      </div>` : ""}
+      </article>
+    </section>`;
   }).join("");
 
   agingRows.innerHTML = Array.from({ length: Math.max(0, terms - 3) }, (_, index) => {
@@ -1697,11 +1893,18 @@ function renderGenerationRows(generation = readGeneration()) {
   updateAgingPreviews();
   updateEventPreviews();
   renderSkillSections();
+  updateDerivedCharacteristics();
 }
 
 function lockTermSkillChoices(eventInput) {
   const eventCard = eventInput.closest("[data-event-card]");
   if (!eventCard || !isValidManualRoll(eventInput.value, 2, 12)) return true;
+  if (!getCareerDefinition(eventInput.dataset.eventCareer || "")) {
+    eventInput.value = "";
+    setCareerProgressError("Choose a listed career before rolling its event.");
+    document.querySelector("#character-career").focus();
+    return false;
+  }
   const eventIndex = Number(eventInput.dataset.eventRoll);
   const skillRow = careerSkillRows.querySelector(`[data-career-term="${eventIndex + 1}"]`);
   const missingChoice = careerTrackingEnabled
@@ -1714,6 +1917,10 @@ function lockTermSkillChoices(eventInput) {
     return false;
   }
   eventCard.dataset.skillChoicesLocked = "true";
+  eventInput.dataset.rollLocked = "true";
+  eventInput.disabled = true;
+  const eventRollButton = termEventRows.querySelector(`[data-roll-target="${eventInput.id}"]`);
+  if (eventRollButton) eventRollButton.disabled = true;
   if (skillRow) {
     skillRow.dataset.skillChoicesLocked = "true";
     skillRow.querySelectorAll("select").forEach((select) => {
@@ -1725,6 +1932,14 @@ function lockTermSkillChoices(eventInput) {
     }
   }
   return true;
+}
+
+function lockEventRollResult(input, minimum, maximum) {
+  if (!isValidManualRoll(input.value, minimum, maximum)) return;
+  input.dataset.rollLocked = "true";
+  input.disabled = true;
+  const rollButton = termEventRows.querySelector(`[data-roll-target="${input.id}"]`);
+  if (rollButton) rollButton.disabled = true;
 }
 
 function updateEventPreviews(replaceEffects = false) {
@@ -1772,7 +1987,7 @@ function updateEventPreviews(replaceEffects = false) {
     }
     if (checkRows && checkRows.dataset.effect !== effect) {
       const effectChanged = Boolean(checkRows.dataset.effect);
-      const currentChecks = Array.from(checkRows.querySelectorAll("[data-check-event]"), (row) => ({
+      const currentChecks = Array.from(checkRows.querySelectorAll('[data-check-event][data-check-source="career"]'), (row) => ({
         skill: getSelectedEventCheckSkill(row) || row.querySelector("[data-event-check-roll]")?.dataset.skill || "",
         roll: row.querySelector("[data-event-check-roll]")?.value || "",
         dm: Number(row.querySelector("[data-event-check-dm]")?.value || 0)
@@ -1791,14 +2006,16 @@ function updateEventPreviews(replaceEffects = false) {
         input.dataset.eventRoll,
         effect,
         selectedAwards,
-        getCareerEventChecks(effect).length
+        getCareerEventChecks(effect).length,
+        input.dataset.eventCareer
       );
       skillAwardContainer.dataset.effect = effect;
     }
     if (injuryRow) {
       const eventChecks = getCareerEventChecks(effect);
       const eventIndex = input.dataset.eventRoll;
-      const requiresInjury = result === "Injury" || /^Injury:/i.test(effect)
+      const lifeRoll = termEventRows.querySelector(`[data-life-event-roll="${eventIndex}"]`)?.value;
+      const requiresInjury = result === "Injury" || /^Injury:/i.test(effect) || Number(lifeRoll) === 2
         || eventChecks.some((check, checkIndex) => {
           const row = checkRows.querySelector(`[data-check-index="${checkIndex}"]`);
         const skill = row ? getSelectedEventCheckSkill(row) || row.querySelector("[data-event-check-roll]")?.dataset.skill : check.options[0].skill;
@@ -1808,7 +2025,11 @@ function updateEventPreviews(replaceEffects = false) {
         const skillLevel = option.kind === "skill"
           ? getSkillRankBeforeEventCheck(readGeneration(), Number(eventIndex), checkIndex, skill)
           : 0;
-        return roll && getEventCheckResult(check, skill, roll, dm, { kind: option.kind, skillLevel }).startsWith("Failure")
+        return roll && getEventCheckResult(check, skill, roll, dm, {
+          kind: option.kind,
+          skillLevel,
+          throughTerm: Number(eventIndex) + 1
+        }).startsWith("Failure")
           && /injury/i.test(check.failureOutcome);
       });
       injuryRow.hidden = !requiresInjury;
@@ -1818,16 +2039,35 @@ function updateEventPreviews(replaceEffects = false) {
     }
   });
   updateCareerEventCheckPreviews();
+  updateEventSkillAwardRequirements();
   updateInjuryRollPreviews();
   updateIronManDeathState();
 }
 
+function updateEventSkillAwardRequirements() {
+  termEventRows.querySelectorAll("[data-event-skill-award]").forEach((select) => {
+    const checkIndex = select.dataset.awardCheckIndex;
+    if (checkIndex === "") {
+      select.required = true;
+      return;
+    }
+    const result = termEventRows.querySelector(
+      `[data-check-event="${select.dataset.eventSkillAward}"][data-check-source="career"][data-check-index="${checkIndex}"] [data-event-check-result]`
+    );
+    select.required = Boolean(result?.textContent.startsWith("Success"));
+  });
+}
+
 function updateCareerEventCheckPreviews() {
+  const generation = readGeneration();
   termEventRows.querySelectorAll("[data-check-event]").forEach((row) => {
     const eventIndex = Number(row.dataset.checkEvent);
     const checkIndex = Number(row.dataset.checkIndex);
     const eventRoll = termEventRows.querySelector(`[data-event-roll="${eventIndex}"]`);
-    const eventEffect = eventRoll?.value
+    const lifeRoll = termEventRows.querySelector(`[data-life-event-roll="${eventIndex}"]`);
+    const eventEffect = row.dataset.checkSource === "life" && lifeRoll?.value
+      ? getLifeEventEffect(lifeRoll.value, termEventRows.querySelector(`[data-life-event-detail-roll="${eventIndex}"]`)?.value)
+      : eventRoll?.value
       ? getCareerEventEffect(eventRoll.dataset.eventCareer, Number(eventRoll.value))
       : "";
     const check = getCareerEventChecks(eventEffect)[checkIndex];
@@ -1836,14 +2076,20 @@ function updateCareerEventCheckPreviews() {
     const dm = row.querySelector("[data-event-check-dm]");
     const skill = getSelectedEventCheckSkill(row) || check.options[0].skill;
     const option = check.options.find((candidate) => candidate.skill === skill) || check.options[0];
-    const skillLevel = option.kind === "skill"
-      ? getSkillRankBeforeEventCheck(readGeneration(), eventIndex, checkIndex, skill)
-      : 0;
+    const skillLevel = option.kind !== "skill" ? 0
+      : row.dataset.checkSource === "life"
+        ? getGenerationSkillRanks(generation, eventRoll?.dataset.eventCareer || trackedCareerName, eventIndex + 1)
+          .get(canonicalSkillName(skill).toLocaleLowerCase())?.level || 0
+        : getSkillRankBeforeEventCheck(generation, eventIndex, checkIndex, skill);
     const result = row.querySelector("[data-event-check-result]");
     const skillLabel = row.querySelector('label[for^="event-check-roll-"]');
     if (skillLabel) skillLabel.textContent = `2D6 result for ${skill} check`;
     roll.setAttribute("aria-label", `2D6 result for ${skill} check`);
-    result.textContent = getEventCheckResult(check, skill, roll.value, dm.value, { kind: option.kind, skillLevel });
+    result.textContent = getEventCheckResult(check, skill, roll.value, dm.value, {
+      kind: option.kind,
+      skillLevel,
+      throughTerm: eventIndex + 1
+    });
   });
 }
 
@@ -1869,7 +2115,7 @@ function updateInjuryRollPreviews() {
       detailResult.textContent = "";
       return;
     }
-    const endDm = getCharacteristicDm(Number(form.elements.namedItem("end").value || 0));
+    const endDm = getCharacteristicDm(getCharacteristicScore("end", Number(eventIndex) + 1));
     const careerDm = getInjuryCareerDm(careerName);
     const total = Number(rollInput.value) + endDm + careerDm;
     const throwEffect = total - 6;
@@ -1978,8 +2224,11 @@ function updateIronManDeathState() {
     && (Array.from(termEventRows.querySelectorAll("[data-event-injury-roll]")).some((input) => isValidManualRoll(input.value, 2, 12))
       || Array.from(termEventRows.querySelectorAll("[data-event-card]")).some((card) => card.dataset.injuryRecorded === "true"));
   document.querySelector("#iron-man-death-alert").hidden = !isDead;
-  termEventRows.querySelectorAll("[data-event-roll], [data-roll-sides], [data-event-check-roll], [data-event-check-skill], [data-event-check-dm], [data-event-injury-roll], [data-injury-detail-roll]").forEach((control) => {
-    control.disabled = isDead;
+  termEventRows.querySelectorAll("[data-event-roll], [data-life-event-roll], [data-life-event-detail-roll], [data-term-years], [data-roll-sides], [data-event-check-roll], [data-event-check-skill], [data-event-check-dm], [data-event-injury-roll], [data-injury-detail-roll]").forEach((control) => {
+    const targetInput = control.matches("[data-roll-sides]")
+      ? document.querySelector(`#${control.dataset.rollTarget}`)
+      : control;
+    control.disabled = isDead || targetInput?.dataset.rollLocked === "true";
   });
   document.querySelector("#career-progression-actions").querySelectorAll("button").forEach((button) => {
     button.disabled = isDead || (button.id !== "muster-out-button" && Number(careerTermsInput.value) >= 7);
@@ -1998,9 +2247,16 @@ function setCareerProgressError(message = "") {
 
 function updateCareerAge(previousTerms, nextTerms, musteredOut = false) {
   const ageInput = document.querySelector("#character-age");
-  const expectedPreviousAge = 18 + Math.max(0, previousTerms - (careerMusteredOut ? 0 : 1)) * 4;
-  if (!ageInput.value || Number(ageInput.value) === expectedPreviousAge) {
-    ageInput.value = String(18 + Math.max(0, nextTerms - (musteredOut ? 0 : 1)) * 4);
+  const generation = readGeneration();
+  const completedTerms = musteredOut ? nextTerms : previousTerms;
+  const termYears = (term) => generation.rollTermLength
+    ? Number(generation.events[term]?.termYears) || 4
+    : 4;
+  const previousAge = 18 + generation.events.slice(0, Math.max(0, completedTerms - 1))
+    .reduce((total, _event, term) => total + termYears(term), 0);
+  const nextAge = previousAge + (completedTerms ? termYears(completedTerms - 1) : 0);
+  if (!ageInput.value || Number(ageInput.value) === previousAge || Number(ageInput.value) === nextAge) {
+    ageInput.value = String(nextAge);
   }
 }
 
@@ -2020,6 +2276,13 @@ function canCompleteCurrentTerm() {
       return false;
     }
   }
+  const firstTermViolations = Number(careerTermsInput.value) === 1
+    ? getFirstTermSkillViolations(readGeneration())
+    : [];
+  if (firstTermViolations.length) {
+    setCareerProgressError(`Term 1 skills cannot exceed level 2: ${firstTermViolations.join(", ")}.`);
+    return false;
+  }
   const eventRoll = termEventRows.querySelector(`[data-event-roll="${Number(careerTermsInput.value) - 1}"]`);
   if (!eventRoll?.value) {
     setCareerProgressError("Roll this term's career event before continuing or mustering out.");
@@ -2027,6 +2290,14 @@ function canCompleteCurrentTerm() {
     return false;
   }
   const activeEventIndex = Number(careerTermsInput.value) - 1;
+  const missingEventSelection = Array.from(termEventRows.querySelectorAll(
+    `[data-event-skill-award="${activeEventIndex}"], [data-life-skill-award="${activeEventIndex}"], [data-life-trait-award="${activeEventIndex}"]`
+  )).find((select) => select.required && !select.value);
+  if (missingEventSelection) {
+    setCareerProgressError("Choose the required skill or trait award for this event before continuing or mustering out.");
+    missingEventSelection.focus();
+    return false;
+  }
   const emptyEventCheck = Array.from(termEventRows.querySelectorAll(`[data-check-event="${activeEventIndex}"] [data-event-check-roll]`))
     .find((input) => !isValidManualRoll(input.value, 2, 12));
   if (emptyEventCheck) {
@@ -2047,6 +2318,50 @@ function canCompleteCurrentTerm() {
       setCareerProgressError("Roll or enter the Injury table's 1D6 detail before continuing or mustering out.");
       detailRoll.focus();
       return false;
+    }
+  }
+  if (rollTermLengthInput.checked) {
+    const termYears = termEventRows.querySelector(`[data-term-years="${activeEventIndex}"]`);
+    if (!isValidManualRoll(termYears?.value, 1, 6)) {
+      setCareerProgressError("Roll or enter this term's length before continuing or mustering out.");
+      termYears?.focus();
+      return false;
+    }
+  }
+  const activeEvent = readGeneration().events[activeEventIndex];
+  if (getCareerDefinition(activeEvent?.career || careerName)?.eventNames?.[Number(activeEvent?.roll)] === "Life Event") {
+    if (!isValidManualRoll(activeEvent.lifeRoll, 2, 12)) {
+      const lifeRoll = termEventRows.querySelector(`[data-life-event-roll="${activeEventIndex}"]`);
+      setCareerProgressError("Roll or enter this term's Life Event before continuing or mustering out.");
+      lifeRoll?.focus();
+      return false;
+    }
+    if (Number(activeEvent.lifeRoll) === 8 && !activeEvent.lifeSkillAward) {
+      const skillAward = termEventRows.querySelector(`[data-life-skill-award="${activeEventIndex}"]`);
+      setCareerProgressError("Choose the skill gained from the Life Event before continuing or mustering out.");
+      skillAward?.focus();
+      return false;
+    }
+    if (Number(activeEvent.lifeRoll) === 10
+      && !(activeEvent.lifeChecks || []).some((check) => isValidManualRoll(check.roll, 2, 12))) {
+      const checkRoll = termEventRows.querySelector(`[data-life-event-checks="${activeEventIndex}"] [data-event-check-roll]`);
+      setCareerProgressError("Resolve the Life Event's Admin check before continuing or mustering out.");
+      checkRoll?.focus();
+      return false;
+    }
+    if (Number(activeEvent.lifeRoll) === 12) {
+      if (!isValidManualRoll(activeEvent.lifeDetailRoll, 1, 6)) {
+        const detailRoll = termEventRows.querySelector(`[data-life-event-detail-roll="${activeEventIndex}"]`);
+        setCareerProgressError("Roll or enter the Unusual Event detail before continuing or mustering out.");
+        detailRoll?.focus();
+        return false;
+      }
+      if (Number(activeEvent.lifeDetailRoll) === 3 && !activeEvent.lifeTraitAward) {
+        const traitAward = termEventRows.querySelector(`[data-life-trait-award="${activeEventIndex}"]`);
+        setCareerProgressError("Choose the Trait gained from the Unusual Event before continuing or mustering out.");
+        traitAward?.focus();
+        return false;
+      }
     }
   }
   setCareerProgressError();
@@ -2129,6 +2444,8 @@ function setCharacterEditorMode(character) {
 
 function resetForm() {
   form.reset();
+  setCharacterFormError();
+  document.querySelector("#character-age-helper").textContent = "Normally 18 + 4 years per career term.";
   editingCharacterId = "";
   currentSkillLevels = new Map();
   generationSkillAdjustments = new Map();
@@ -2144,6 +2461,7 @@ function resetForm() {
   careerTermsInput.value = "1";
   document.querySelector("#character-age").value = "18";
   document.querySelector("#character-career").value = "";
+  updateCareerDescription();
   [5, 6, 7, 8, 9, 10].forEach((value, index) => {
     form.elements.namedItem(ATTRIBUTE_KEYS[index]).value = String(value);
   });
@@ -2157,6 +2475,7 @@ function resetForm() {
     terms: 1,
     bonusBenefits: 0,
     agingTechDm: 0,
+    rollTermLength: false,
     careerSkills: [{ term: 1, career: "", service: "", picks: [] }],
     events: [{ roll: "", career: "", outcome: "", injury: false }],
     aging: [],
@@ -2197,6 +2516,10 @@ function openEditor(character = null) {
       benefits: [{ table: "material", roll: "", outcome: "" }],
       traits: []
     };
+    rollTermLengthInput.checked = generation.rollTermLength === true;
+    document.querySelector("#character-age-helper").textContent = rollTermLengthInput.checked
+      ? "Optional rule: roll 1D6 years for each term instead of using four years."
+      : "Normally 18 + 4 years per career term.";
     generationSkillAdjustments = new Map((generation.skillAdjustments || []).map((entry) => [
       canonicalSkillName(entry.skill).toLocaleLowerCase(),
       { skill: canonicalSkillName(entry.skill), delta: entry.delta }
@@ -2228,7 +2551,7 @@ function readForm() {
   const age = formData.get("age");
   const attributes = existingCharacter
     ? { ...existingCharacter.attributes }
-    : Object.fromEntries(ATTRIBUTE_KEYS.map((key) => [key, String(formData.get(key) || "")]));
+    : Object.fromEntries(ATTRIBUTE_KEYS.map((key) => [key, String(getCharacteristicScore(key))]));
   const generation = existingCharacter?.generation || readGeneration();
   if (!existingCharacter) {
     generation.events.forEach((entry, eventIndex) => {
@@ -2266,42 +2589,49 @@ function readForm() {
 
 function handleSave(event) {
   event.preventDefault();
+  setCharacterFormError();
   if (!editingCharacterId) {
     const injuryOccurred = Array.from(termEventRows.querySelectorAll("[data-event-injury-roll]")).some((input) => isValidManualRoll(input.value, 2, 12))
       || Array.from(termEventRows.querySelectorAll("[data-event-card]")).some((card) => card.dataset.injuryRecorded === "true");
     if (ironManRuleInput.checked && injuryOccurred) {
-      showNotice("This character died during creation under the Iron Man rule. Start a new character from the beginning.", true);
+      setCharacterFormError("This character died during creation under the Iron Man rule. Start a new character from the beginning.");
       return;
     }
     validateCharacteristics();
     const generation = readGeneration();
     const violations = getFirstTermSkillViolations(generation);
     if (violations.length) {
-      showNotice(`Term 1 skills cannot exceed level 2: ${violations.join(", ")}.`, true);
+      setCharacterFormError(`Term 1 skills cannot exceed level 2: ${violations.join(", ")}.`);
       return;
     }
     const ranks = getGenerationSkillRanks(generation, generation.trackedCareer || trackedCareerName);
     const overRanked = [...ranks.values()].filter((skill) => skill.level > (skill.name === "Jack of All Trades" ? 3 : 5));
     if (overRanked.length) {
-      showNotice(`Skill rank limits exceeded: ${overRanked.map((skill) => skill.name).join(", ")}.`, true);
+      setCharacterFormError(`Skill rank limits exceeded: ${overRanked.map((skill) => skill.name).join(", ")}.`);
       return;
     }
     if (careerMusteredOut) {
       const totalRanks = [...ranks.values()].reduce((total, skill) => total + skill.level, 0);
-      const skillLimit = Number(form.elements.namedItem("int").value || 0) + Number(form.elements.namedItem("edu").value || 0);
+      const skillLimit = getCharacteristicScore("int") + getCharacteristicScore("edu");
       if (totalRanks > skillLimit) {
-        showNotice(`Skill ranks total ${totalRanks}, above the INT + EDU limit of ${skillLimit}. Reduce ranks before saving.`, true);
+        setCharacterFormError(`Skill ranks total ${totalRanks}, above the INT + EDU limit of ${skillLimit}. Reduce ranks before saving.`);
         return;
       }
     }
   } else {
     const overRanked = [...currentSkillLevels.values()].filter((skill) => skill.level > (skill.name === "Jack of All Trades" ? 3 : 5));
     if (overRanked.length) {
-      showNotice(`Skill rank limits exceeded: ${overRanked.map((skill) => skill.name).join(", ")}.`, true);
+      setCharacterFormError(`Skill rank limits exceeded: ${overRanked.map((skill) => skill.name).join(", ")}.`);
       return;
     }
   }
-  if (!form.reportValidity()) return;
+  if (!form.reportValidity()) {
+    const invalidField = form.querySelector(":invalid");
+    const label = invalidField?.labels?.[0]?.textContent.trim() || invalidField?.name || "A required field";
+    setCharacterFormError(`${label}: ${invalidField?.validationMessage || "Please correct this field."}`);
+    invalidField?.focus();
+    return;
+  }
 
   const character = readForm();
   const previous = characters.slice();
@@ -2316,7 +2646,7 @@ function handleSave(event) {
     saveCharacters();
   } catch (error) {
     characters = previous;
-    showNotice(`Character could not be saved: ${error.message}`, true);
+    setCharacterFormError(`Character could not be saved: ${error.message}`);
     return;
   }
 
@@ -2380,15 +2710,6 @@ document.querySelector("#items-nav-button").addEventListener("click", () => show
 document.querySelector("#add-inventory-item-button").addEventListener("click", addInventoryItem);
 inventoryList.addEventListener("change", updateInventoryEntry);
 inventoryList.addEventListener("click", removeInventoryItem);
-careerSkillRows.addEventListener("change", (event) => {
-  if (!event.target.matches("[data-career-service], [data-career-pick]")) return;
-  setCareerProgressError();
-  careerTrackingEnabled = true;
-  careerSkillRows.querySelectorAll("select").forEach((select) => {
-    select.required = true;
-  });
-  updateDerivedCharacteristics();
-});
 document.querySelector("#new-item-button").addEventListener("click", () => openItemEditor());
 document.querySelector("#empty-add-item-button").addEventListener("click", () => openItemEditor());
 document.querySelector("#close-item-dialog-button").addEventListener("click", () => itemDialog.close());
@@ -2408,11 +2729,19 @@ itemGrid.addEventListener("click", (event) => {
   }
 });
 form.addEventListener("change", (event) => {
+  if (!document.querySelector("#character-form-error").hidden) setCharacterFormError();
   if (event.target.matches("[data-trait]")) {
     updateTraitDescriptions();
     renderSkillSections();
   }
-  if (event.target.matches("[data-event-skill-award]")) renderSkillSections();
+  if (event.target.matches("[data-event-skill-award], [data-life-skill-award]")) {
+    renderSkillSections();
+    updateDerivedCharacteristics();
+  }
+  if (event.target.matches("[data-life-trait-award]")) {
+    event.target.parentElement.querySelector(".trait-description").textContent = getTraitDescription(event.target.value);
+    renderSkillSections();
+  }
   const benefitType = event.target.closest("[data-benefit-table]");
   if (benefitType) {
     updateBenefitControls(benefitType);
@@ -2421,6 +2750,7 @@ form.addEventListener("change", (event) => {
   }
 });
 form.addEventListener("input", (event) => {
+  if (!document.querySelector("#character-form-error").hidden) setCharacterFormError();
   if (event.target.matches("[data-aging-roll]")) updateAgingPreviews();
   if (event.target.matches("[data-event-roll]")) {
     if (!lockTermSkillChoices(event.target)) {
@@ -2428,8 +2758,20 @@ form.addEventListener("input", (event) => {
       return;
     }
     updateEventPreviews(true);
+    if (isValidManualRoll(event.target.value, 2, 12)) renderGenerationRows(readGeneration());
+  }
+  if (event.target.matches("[data-life-event-roll], [data-life-event-detail-roll]")) {
+    const range = event.target.matches("[data-life-event-roll]") ? [2, 12] : [1, 6];
+    lockEventRollResult(event.target, ...range);
+    if (isValidManualRoll(event.target.value, ...range)) renderGenerationRows(readGeneration());
+  }
+  if (event.target.matches("[data-term-years]")) {
+    lockEventRollResult(event.target, 1, 6);
+    if (isValidManualRoll(event.target.value, 1, 6)) renderGenerationRows(readGeneration());
   }
   if (event.target.matches("[data-event-check-roll], [data-event-check-dm], [data-event-injury-roll], [data-injury-detail-roll]")) {
+    if (event.target.matches("[data-event-check-roll], [data-event-injury-roll]")) lockEventRollResult(event.target, 2, 12);
+    if (event.target.matches("[data-injury-detail-roll]")) lockEventRollResult(event.target, 1, 6);
     updateCareerEventCheckPreviews();
     updateInjuryRollPreviews();
     updateEventPreviews();
@@ -2441,14 +2783,31 @@ form.addEventListener("input", (event) => {
 homeworldTypeInput.addEventListener("change", () => updateHomeworldSkillOptions());
 bonusBenefitsInput.addEventListener("input", () => renderGenerationRows(readGeneration()));
 agingTechDmInput.addEventListener("change", updateAgingPreviews);
+rollTermLengthInput.addEventListener("change", () => {
+  document.querySelector("#character-age-helper").textContent = rollTermLengthInput.checked
+    ? "Optional rule: roll 1D6 years for each term instead of using four years."
+    : "Normally 18 + 4 years per career term.";
+  renderGenerationRows(readGeneration());
+});
+document.querySelector("#character-career").addEventListener("input", updateCareerDescription);
 document.querySelector("#character-career").addEventListener("change", () => {
   const careerInput = document.querySelector("#character-career");
   const nextCareer = careerInput.value.trim();
   const generation = readGeneration();
+  const activeIndex = generation.terms - 1;
+  const activeEvent = generation.events[activeIndex];
+  if (isValidManualRoll(activeEvent?.roll, 2, 12)) {
+    careerInput.value = generation.careerSkills?.[activeIndex]?.career
+      || activeEvent.career
+      || trackedCareerName;
+    updateCareerDescription();
+    setCareerProgressError("This term's event is locked. Continue or switch careers to begin another term.");
+    return;
+  }
+  updateCareerDescription();
   trackedCareerName = nextCareer;
   setCareerProgressError();
   if (careerTrackingEnabled && generation.terms > 0) {
-    const activeIndex = generation.terms - 1;
     generation.careerSkills[activeIndex] ||= {
       term: activeIndex + 1,
       career: nextCareer,
@@ -2464,6 +2823,20 @@ document.querySelector("#character-career").addEventListener("change", () => {
 });
 ironManRuleInput.addEventListener("change", updateIronManDeathState);
 termEventRows.addEventListener("change", (event) => {
+  if (event.target.matches("[data-career-service], [data-career-pick]")) {
+    setCareerProgressError();
+    careerTrackingEnabled = true;
+    termEventRows.querySelectorAll("[data-career-service], [data-career-pick]").forEach((select) => {
+      select.required = true;
+    });
+    updateDerivedCharacteristics();
+    return;
+  }
+  if (event.target.matches("[data-career-characteristic]")) {
+    careerTrackingEnabled = true;
+    renderGenerationRows(readGeneration());
+    return;
+  }
   if (event.target.matches("[data-event-check-skill]")) {
     updateCareerEventCheckPreviews();
     updateEventPreviews();

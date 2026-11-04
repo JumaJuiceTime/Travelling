@@ -207,7 +207,7 @@
           <label class="field" id="homeworld-skill-field">
             <span>Age</span>
             <input id="character-age" name="age" type="number" min="0" max="999" placeholder="e.g. 34">
-            <small class="field-helper">Normally 18 + 4 years per career term.</small>
+            <small class="field-helper" id="character-age-helper">Normally 18 + 4 years per career term.</small>
           </label>
           <label class="field" id="career-field">
             <span>Homeworld</span>
@@ -248,6 +248,7 @@
               <option value="Scholar"></option>
               <option value="Scout"></option>
             </datalist>
+            <small class="field-helper career-description" id="career-description" aria-live="polite">Choose a career to see what the role involves.</small>
           </label>
         </div>
 
@@ -303,12 +304,18 @@
                 <option value="3">+3 (TL 13+)</option>
               </select>
             </label>
+            <label class="custom-characteristics-toggle iron-man-toggle field-wide" for="roll-term-length">
+              <input id="roll-term-length" type="checkbox">
+              <span>
+                <strong>Optional rule: Roll term length</strong>
+                <small>Roll 1D6 for the number of years in each term instead of using 4 years.</small>
+              </span>
+            </label>
           </div>
           <p class="section-helper generation-rule-note">Complete each term in order. Roll each career event when ready; its result and effects will appear in the event box.</p>
           <p class="section-helper generation-rule-note">Career skill selections are tracked automatically. Event and benefit skill gains are added to the same skill sheet.</p>
           <p class="generation-progress" id="career-progress-summary" aria-live="polite"></p>
           <p class="career-progress-error" id="career-progress-error" role="alert" hidden></p>
-          <div id="career-skill-rows" class="generation-rows"></div>
           <div id="term-event-rows" class="generation-rows"></div>
           <p class="career-death-alert" id="iron-man-death-alert" role="alert" hidden>Character died during creation under the Iron Man rule. Start a new character from the beginning.</p>
           <div class="career-progression-actions" id="career-progression-actions">
@@ -354,7 +361,6 @@
           </div>
           <div id="character-sheet-record-content" class="sheet-record-content"></div>
         </section>
-
         <section class="generation-section skill-management-section" aria-labelledby="skills-title">
           <div class="form-section-heading">
             <div>
@@ -415,6 +421,7 @@
           <div class="encumbrance-summary" id="encumbrance-summary" aria-live="polite"></div>
         </section>
 
+        <p class="character-form-error" id="character-form-error" role="alert" aria-live="assertive" hidden></p>
         <div class="dialog-actions">
           <button class="button button-quiet" id="cancel-dialog-button" type="button">Cancel</button>
           <button class="button button-primary" id="save-character-button" type="submit">Save character</button>

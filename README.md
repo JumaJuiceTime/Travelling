@@ -7,12 +7,12 @@ Wayfarer is a responsive, local-first character desk for a Cepheus Deluxe campai
 - Create, edit, search, and remove character records.
 - Start characters with the standard characteristic array and a homeworld skill; custom characteristic scores require an explicit opt-in.
 - Optionally enable the Iron Man rule to treat injuries during character creation as fatal.
-- Select career skills by term from career-specific service, specialist, and advanced-education lists; rank skills are added automatically.
+- Select career skills by term from career-specific service, specialist, and advanced-education lists; career descriptions appear when selected, and one skill level per term may instead raise a characteristic by 1. The first career's Service skills start at level 0, with one selected at level 1; no skill can exceed level 2 at the end of the first term. Rank skills are added automatically.
 - Track skill ranks from homeworld and career awards, event checks, and later play. Proficient and remaining skills are shown in collapsible groups, including level-0 training.
 - Set up skill checks from a skill with a chosen characteristic, unskilled penalty, Jack of All Trades adjustment, situational DM, and optional applicable-trait Advantage.
-- Progress through careers one term at a time, with options to continue, switch careers, or muster out. A term's skill choices lock once its event is rolled; career changes reduce mustering-out benefit rolls.
-- Calculate starting age, Stamina, Lifeblood, and the INT + EDU skill-rank limit.
-- Roll career events when ready, choose one option when the event offers alternative skill checks, resolve its throw with optional DMs, and see success/failure outcomes. Injury events provide the END Injury-table throw and any required 1D6 follow-up; traits are selectable from the supplied list.
+- Progress through careers one term at a time, with each term's skill choices shown alongside its event and options to continue, switch careers, or muster out. Event results lock once rolled or entered, and each required check result locks once rolled or entered; career changes reduce mustering-out benefit rolls.
+- Calculate starting age, Stamina, Lifeblood, and the INT + EDU skill-rank limit; optionally roll 1D6 for each term's length to determine age.
+- Roll career events when ready, choose one option when the event offers alternative skill checks, resolve its throw with optional DMs, and see success/failure outcomes. Life Events are resolved within their term, including required follow-up rolls and skill/trait choices. Injury events provide the END Injury-table throw and any required 1D6 follow-up; traits are selectable from the supplied list.
 - Open saved characters as play sheets: careers, history, characteristics, traits, and generation outcomes are preserved, while identity, skills, carried items, and notes remain editable during play.
 - Show each trait's prerequisite and effect when selected, with the same details available as a hover tooltip.
 - Roll mustering-out cash and material benefits with career-specific results and event DMs; aging effects and rank purchases can still be resolved manually.

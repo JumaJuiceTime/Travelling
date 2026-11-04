@@ -2,6 +2,7 @@
 
 const CAREER_DATA = {
   Agent: {
+    description: "You were a police officer, government or corporate spy, or private investigator.",
     service: ["Investigation", "Admin", "Computer", "Streetwise", "Carousing", "Stealth"],
     specialist: ["Deception", "Gun Combat", "Grav Vehicle", "Athletics", "Driving", "Recon"],
     advanced: ["Admin", "Computer", "Liaison", "Science", "Medicine", "Leadership"],
@@ -24,6 +25,7 @@ const CAREER_DATA = {
     }
   },
   Army: {
+    description: "You served in a planetary military or mercenary force.",
     service: ["Gun Combat", "Recon", "Heavy Weapons", "Melee Combat", "Driving", "Athletics"],
     specialist: ["Repair", "Tactics", "Stealth", "Demolitions", "Survival", "Grav Vehicles"],
     advanced: ["Computer", "Admin", "Medicine", "Jack of All Trades", "Leadership", "Gunnery"],
@@ -47,6 +49,7 @@ const CAREER_DATA = {
     }
   },
   Belter: {
+    description: "You were a hard-working asteroid miner or other blue-collar spacer.",
     service: ["Repair", "Demolitions", "Piloting", "Computers", "Zero-G", "Athletics"],
     specialist: ["Jack of All Trades", "Carousing", "Engineering", "Streetwise", "Gunnery", "Melee Combat"],
     advanced: ["Admin", "Medicine", "Grav Vehicles", "Liaison", "Science", "Leadership"],
@@ -70,6 +73,7 @@ const CAREER_DATA = {
     }
   },
   Colonist: {
+    description: "You packed your bags and made a life on a distant frontier world.",
     service: ["Survival", "Repair", "Jack of All Trades", "Animals", "Driving", "Carousing"],
     specialist: ["Liaison", "Melee Combat", "Grav Vehicles", "Gun Combat", "Leadership", "Recon"],
     advanced: ["Science", "Medicine", "Computer", "Admin", "Aircraft", "Watercraft"],
@@ -92,6 +96,7 @@ const CAREER_DATA = {
     }
   },
   Elite: {
+    description: "You were a member of the upper crust of society, a diplomat, or a junior executive.",
     service: ["Admin", "Liaison", "Carousing", "Computer", "Grav Vehicles", "Deception"],
     specialist: ["Leadership", "Melee Combat", "Athletics", "Steward", "Watercraft", "Streetwise"],
     advanced: ["Medicine", "Sciences", "Aircraft", "Animals", "Piloting", "Computer"],
@@ -114,6 +119,7 @@ const CAREER_DATA = {
     }
   },
   Marine: {
+    description: "You were a member of spacefaring infantry, specializing in boarding actions and planetary assault.",
     service: ["Gun Combat", "Heavy Weapons", "Athletics", "Gunnery", "Melee Combat", "Zero-G"],
     specialist: ["Carousing", "Repair", "Demolitions", "Recon", "Tactics", "Stealth"],
     advanced: ["Survival", "Admin", "Computer", "Piloting", "Medicine", "Engineering"],
@@ -136,6 +142,7 @@ const CAREER_DATA = {
     }
   },
   Merchant: {
+    description: "You were an independent spacefaring trader or worked for an interstellar corporation.",
     service: ["Steward", "Repair", "Liaison", "Carousing", "Admin", "Zero-G"],
     specialist: ["Gun Combat", "Melee Combat", "Piloting", "Gunnery", "Streetwise", "Stealth"],
     advanced: ["Medicine", "Science", "Survival", "Grav Vehicles", "Engineering", "Computers"],
@@ -158,6 +165,7 @@ const CAREER_DATA = {
     }
   },
   Navy: {
+    description: "You were a member of an interstellar space navy.",
     service: ["Zero-G", "Repair", "Computers", "Gunnery", "Gun Combat", "Athletics"],
     specialist: ["Piloting", "Carousing", "Melee Combat", "Leadership", "Engineering", "Survival"],
     advanced: ["Science", "Admin", "Medicine", "Tactics", "Jack of All Trades", "Liaison"],
@@ -181,6 +189,7 @@ const CAREER_DATA = {
     }
   },
   Pirate: {
+    description: "You were a space outlaw, a crewmember of a pirate ship.",
     service: ["Streetwise", "Repair", "Gun Combat", "Melee Combat", "Zero-G", "Recon"],
     specialist: ["Deception", "Carousing", "Piloting", "Tactics", "Demolitions", "Gunnery"],
     advanced: ["Liaison", "Engineering", "Jack of All Trades", "Computer", "Medicine", "Admin"],
@@ -203,6 +212,7 @@ const CAREER_DATA = {
     }
   },
   Rogue: {
+    description: "You were a criminal, drifter, or other ne'er-do-well.",
     service: ["Streetwise", "Recon", "Gun Combat", "Deception", "Stealth", "Carousing"],
     specialist: ["Melee Combat", "Liaison", "Athletics", "Admin", "Repair"],
     advanced: ["Survival", "Jack of All Trades", "Engineering", "Medicine", "Tactics", "Computers"],
@@ -225,6 +235,7 @@ const CAREER_DATA = {
     }
   },
   Scholar: {
+    description: "You were a scientist, doctor, or researcher.",
     service: ["Admin", "Computer", "Medicine", "Liaison", "Investigation", "Science"],
     specialist: ["Survival", "Repair", "Carousing", "Engineering", "Jack of All Trades", "Medicine"],
     advanced: ["Piloting", "Zero-G", "Animals", "Recon", "Athletics", "Leadership"],
@@ -247,6 +258,7 @@ const CAREER_DATA = {
     }
   },
   Scout: {
+    description: "You were an intrepid explorer, surveyor, or courier.",
     service: ["Piloting", "Repair", "Computer", "Gun Combat", "Zero-G", "Survival"],
     specialist: ["Gunnery", "Athletics", "Recon", "Science", "Investigation", "Stealth"],
     advanced: ["Admin", "Grav Vehicles", "Medicine", "Tactics", "Engineering", "Jack of All Trades"],

@@ -297,7 +297,7 @@ const TRAIT_DETAILS = {
     "prerequisite": "DEX 9+",
     "effect": "With this trait, diving for cover does not take up your next action."
   },
-  "Explorer’s Society": {
+  "Explorer's Society": {
     "prerequisite": "None",
     "effect": "The character receives membership in the exclusive Explorer's Society. Membership grants a free high-passage ticket for one parsec every two months and free stay at Society hostels in most starports."
   },
