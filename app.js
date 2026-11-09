@@ -88,6 +88,7 @@ const remainingSkillList = document.querySelector("#remaining-skill-list");
 const skillCheckPanel = document.querySelector("#skill-check-panel");
 const itemsView = document.querySelector("#items-view");
 const charactersView = document.querySelector("#characters-view");
+const shipsView = document.querySelector("#ships-view");
 const itemGrid = document.querySelector("#item-grid");
 const itemSearchInput = document.querySelector("#item-search");
 const itemCategoryFilter = document.querySelector("#item-category-filter");
@@ -400,7 +401,7 @@ function render() {
   document.querySelector("#career-total").textContent = String(
     characters.filter((character) => character.career.trim() || character.history.trim()).length
   );
-  exportButton.disabled = characters.length === 0 && allItems().length === 0;
+  exportButton.disabled = characters.length === 0 && allItems().length === 0 && ShipManager.count() === 0;
   document.querySelector("#nav-item-count").textContent = String(allItems().length);
   document.querySelector("#catalog-count").textContent = String(allItems().length);
   emptyState.hidden = characters.length > 0 || query.length > 0;
@@ -408,6 +409,7 @@ function render() {
   grid.hidden = filtered.length === 0;
   grid.innerHTML = filtered.map(renderCard).join("");
   renderItems();
+  ShipManager.render();
 }
 
 function setCharacterFormError(message = "") {
@@ -772,13 +774,17 @@ function deleteItem(id) {
 
 function showView(view) {
   const showingItems = view === "items";
-  charactersView.hidden = showingItems;
+  const showingShips = view === "ships";
+  charactersView.hidden = showingItems || showingShips;
   itemsView.hidden = !showingItems;
-  document.querySelector("#characters-nav-button").classList.toggle("active", !showingItems);
+  shipsView.hidden = !showingShips;
+  document.querySelector("#characters-nav-button").classList.toggle("active", !showingItems && !showingShips);
   document.querySelector("#items-nav-button").classList.toggle("active", showingItems);
-  document.querySelector("#characters-nav-button").toggleAttribute("aria-current", !showingItems);
+  document.querySelector("#ships-nav-button").classList.toggle("active", showingShips);
+  document.querySelector("#characters-nav-button").toggleAttribute("aria-current", !showingItems && !showingShips);
   document.querySelector("#items-nav-button").toggleAttribute("aria-current", showingItems);
-  document.querySelector("#page-section-label").textContent = showingItems ? "ITEMS" : "CHARACTERS";
+  document.querySelector("#ships-nav-button").toggleAttribute("aria-current", showingShips);
+  document.querySelector("#page-section-label").textContent = showingItems ? "ITEMS" : showingShips ? "SHIPS" : "CHARACTERS";
 }
 
 function updateHomeworldSkillOptions(selectedSkill = "") {
@@ -2673,11 +2679,11 @@ function handleDelete(id) {
 }
 
 function exportData() {
-  const exportFile = new Blob([JSON.stringify({ version: 1, characters, items: allItems() }, null, 2)], { type: "application/json" });
+  const exportFile = new Blob([JSON.stringify({ version: 1, characters, items: allItems(), ships: ShipManager.getSaved() }, null, 2)], { type: "application/json" });
   const downloadUrl = URL.createObjectURL(exportFile);
   const link = document.createElement("a");
   link.href = downloadUrl;
-  link.download = "wayfarer-characters.json";
+  link.download = "wayfarer-campaign.json";
   link.click();
   window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
 }
@@ -2707,6 +2713,8 @@ searchInput.addEventListener("input", render);
 form.addEventListener("submit", handleSave);
 document.querySelector("#characters-nav-button").addEventListener("click", () => showView("characters"));
 document.querySelector("#items-nav-button").addEventListener("click", () => showView("items"));
+document.querySelector("#ships-nav-button").addEventListener("click", () => showView("ships"));
+window.addEventListener("wayfarer:ships-changed", render);
 document.querySelector("#add-inventory-item-button").addEventListener("click", addInventoryItem);
 inventoryList.addEventListener("change", updateInventoryEntry);
 inventoryList.addEventListener("click", removeInventoryItem);

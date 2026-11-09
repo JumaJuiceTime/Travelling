@@ -10,6 +10,8 @@
     <script src="career-data.js" defer></script>
     <script src="trait-data.js" defer></script>
     <script src="skills-data.js" defer></script>
+    <script src="ship-data.js" defer></script>
+    <script src="ship-builder.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body>
@@ -35,10 +37,10 @@
             <span>Items</span>
             <span class="nav-count" id="nav-item-count">0</span>
           </button>
-          <button class="nav-item unavailable" type="button" disabled title="Ship management is planned for a later milestone">
+          <button class="nav-item" id="ships-nav-button" type="button">
             <span class="nav-icon" aria-hidden="true">⌁</span>
             <span>Ships</span>
-            <span class="soon-tag">LATER</span>
+            <span class="nav-count" id="nav-ship-count">0</span>
           </button>
           <button class="nav-item unavailable" type="button" disabled title="Game Master tools are planned for a later milestone">
             <span class="nav-icon" aria-hidden="true">✳</span>
@@ -169,12 +171,227 @@
           </section>
         </section>
 
+        <section id="ships-view" hidden>
+          <section class="page-heading" aria-labelledby="ships-title">
+            <div>
+              <p class="eyebrow">YOUR CAMPAIGN FLEET</p>
+              <h1 id="ships-title">Shipyard<span class="heading-period">.</span></h1>
+              <p class="page-description">Browse common Cepheus Deluxe designs or build and save a ship of your own.</p>
+            </div>
+            <button class="button button-primary" id="new-ship-button" type="button">
+              <span class="plus-icon" aria-hidden="true">+</span> Design a ship
+            </button>
+          </section>
+          <div class="notice" id="ship-notice" role="status" aria-live="polite" hidden></div>
+          <section class="roster-section ship-catalog" aria-labelledby="saved-ships-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">LOCAL DESIGNS</p>
+                <h2 id="saved-ships-title">Your ships <span class="catalog-count" id="ship-count">0</span></h2>
+              </div>
+            </div>
+            <div class="character-grid ship-grid" id="saved-ship-grid"></div>
+            <div class="empty-state ship-empty-state" id="ship-empty-state">
+              <div class="empty-orbit" aria-hidden="true"><span>⌁</span></div>
+              <p class="eyebrow">A FLEET OF YOUR OWN</p>
+              <h3>No ships saved yet.</h3>
+              <p>Start from a common design or create a ship from scratch. Saved ships are separate from characters, ready to link to crew later.</p>
+              <button class="button button-primary" id="empty-new-ship-button" type="button">
+                <span class="plus-icon" aria-hidden="true">+</span> Design your first ship
+              </button>
+            </div>
+          </section>
+          <section class="roster-section ship-catalog" aria-labelledby="common-ships-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">CEPHEUS DELUXE REFERENCE</p>
+                <h2 id="common-ships-title">Common designs</h2>
+              </div>
+              <label class="search-box">
+                <span class="search-icon" aria-hidden="true">⌕</span>
+                <span class="visually-hidden">Search common ship designs</span>
+                <input id="common-ship-search" type="search" placeholder="Search designs..." autocomplete="off">
+              </label>
+            </div>
+            <div class="character-grid ship-grid" id="common-ship-grid"></div>
+            <p class="no-results" id="common-ship-no-results" hidden>No common ship designs match that search.</p>
+          </section>
+        </section>
+
         <footer class="page-footer">
           <span>WAYFARER <span class="footer-divider">•</span> A PERSONAL CAMPAIGN DESK</span>
           <span>YOUR DATA STAYS IN THIS BROWSER</span>
         </footer>
       </main>
     </div>
+
+    <dialog class="editor-dialog ship-dialog" id="ship-dialog" aria-labelledby="ship-dialog-title">
+      <form class="editor-form" id="ship-form">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">SHIP CONSTRUCTION</p>
+            <h2 id="ship-dialog-title">Design a ship</h2>
+          </div>
+          <button class="icon-button" id="close-ship-dialog-button" type="button" aria-label="Close ship designer">×</button>
+        </div>
+        <p class="form-intro">Choose the hull and components. Tonnage, cargo space, cost, and construction time update as you work.</p>
+        <input id="ship-id" type="hidden">
+        <div class="form-grid">
+          <label class="field field-wide">
+            <span>Ship name <span class="required-mark">*</span></span>
+            <input id="ship-name" required maxlength="80" placeholder="e.g. Far Horizon">
+          </label>
+          <label class="field">
+            <span>Tech level</span>
+            <input id="ship-tech-level" type="number" min="9" max="16" value="12" required>
+          </label>
+          <label class="field">
+            <span>Hull tonnage</span>
+            <input id="ship-tonnage" type="number" min="10" max="10000" value="200" required>
+          </label>
+          <label class="field">
+            <span>Hull configuration</span>
+            <select id="ship-configuration" aria-describedby="ship-configuration-help">
+              <option value="standard" title="Atmosphere-capable hull. It cannot fly like an aircraft, may skim gas giants, and has no hull cost modifier. Atmospheric Pilot checks take DM-2.">Standard</option>
+              <option value="streamlined" title="Flies like an aircraft in an atmosphere, may skim gas giants, and includes fuel scoops. Hull costs 10% more.">Streamlined</option>
+              <option value="distributed" title="Space-only hull that breaks up in atmospheres denser than Trace and cannot skim gas giants. Hull costs 10% less.">Distributed</option>
+            </select>
+            <small class="field-helper ship-select-help" id="ship-configuration-help"></small>
+          </label>
+          <label class="field">
+            <span>Armor</span>
+            <select id="ship-armor" aria-describedby="ship-armor-help">
+              <option value="none" title="No armor tonnage or armor cost. Ships of 1,000 tons or more receive one automatic armor increment.">None</option>
+              <option value="light" title="Choose armor material below. Occupies a percentage of hull tonnage and costs a percentage of hull cost.">Light</option>
+              <option value="heavy" title="Choose armor material below. Uses more tonnage and costs more than light armor.">Heavy</option>
+            </select>
+            <small class="field-helper ship-select-help" id="ship-armor-help"></small>
+          </label>
+          <label class="field">
+            <span>Armor material</span>
+            <select id="ship-armor-material" aria-describedby="ship-armor-material-help">
+              <option value="titanium" title="Available at TL7. Light: 12.5% of hull tonnage and 12.5% of hull cost; heavy: 25% of both.">Titanium Steel</option>
+              <option value="composite" title="Available at TL8. Light: 10% of hull tonnage and 20% of hull cost; heavy: 20% of tonnage and 40% of cost.">Composite Alloy</option>
+              <option value="crystaliron" title="Available at TL10. Light: 6.5% of hull tonnage and 25% of hull cost; heavy: 12.5% of tonnage and 50% of cost.">Crystaliron</option>
+              <option value="superdense" title="Available at TL12. Light: 5% of hull tonnage and 30% of hull cost; heavy: 10% of tonnage and 60% of cost.">Superdense</option>
+              <option value="bonded" title="Available at TL14. Light: 4% of hull tonnage and 40% of hull cost; heavy: 8.5% of tonnage and 60% of cost.">Bonded Superdense</option>
+              <option value="collapsed" title="Available at TL16. Light: 3.5% of hull tonnage and 50% of hull cost; heavy: 7% of tonnage and 100% of cost.">Collapsed Superdense</option>
+            </select>
+            <small class="field-helper ship-select-help" id="ship-armor-material-help"></small>
+          </label>
+          <label class="field">
+            <span>Maneuver drive (G)</span>
+            <select id="ship-maneuver" aria-describedby="ship-maneuver-help">
+              <option value="0" title="Station-keeping only; no tactical maneuvering. Still requires at least Power Plant 1.">0 — station-keeping</option>
+              <option value="1" title="Provides 1 G acceleration. Drive size depends on hull tonnage and tech level.">1 G</option>
+              <option value="2" title="Provides 2 G acceleration. Drive size depends on hull tonnage and tech level.">2 G</option>
+              <option value="3" title="Provides 3 G acceleration. Drive size depends on hull tonnage and tech level.">3 G</option>
+              <option value="4" title="Provides 4 G acceleration. Drive size depends on hull tonnage and tech level.">4 G</option>
+              <option value="5" title="Provides 5 G acceleration. Drive size depends on hull tonnage and tech level.">5 G</option>
+              <option value="6" title="Provides 6 G acceleration. Drive size depends on hull tonnage and tech level.">6 G</option>
+            </select>
+            <small class="field-helper ship-select-help" id="ship-maneuver-help"></small>
+          </label>
+          <label class="field">
+            <span>Jump drive (parsecs)</span>
+            <select id="ship-jump" aria-describedby="ship-jump-help">
+              <option value="0" title="No jump drive; this is a system ship.">None (system ship)</option>
+              <option value="1" title="Jump up to 1 parsec per jump; requires TL9 and consumes 10% of hull tonnage in fuel.">Jump 1</option>
+              <option value="2" title="Jump up to 2 parsecs per jump; requires TL11 and consumes 20% of hull tonnage in fuel.">Jump 2</option>
+              <option value="3" title="Jump up to 3 parsecs per jump; requires TL12 and consumes 30% of hull tonnage in fuel.">Jump 3</option>
+              <option value="4" title="Jump up to 4 parsecs per jump; requires TL13 and consumes 40% of hull tonnage in fuel.">Jump 4</option>
+              <option value="5" title="Jump up to 5 parsecs per jump; requires TL14 and consumes 50% of hull tonnage in fuel.">Jump 5</option>
+              <option value="6" title="Jump up to 6 parsecs per jump; requires TL15 and consumes 60% of hull tonnage in fuel.">Jump 6</option>
+            </select>
+            <small class="field-helper ship-select-help" id="ship-jump-help"></small>
+          </label>
+          <label class="field">
+            <span>Power plant rating</span>
+            <select id="ship-power-plant" aria-describedby="ship-power-plant-help">
+              <option value="1" title="Rating 1; must be at least as high as the ship's maneuver or jump rating.">1</option>
+              <option value="2" title="Rating 2; must be at least as high as the ship's maneuver or jump rating.">2</option>
+              <option value="3" title="Rating 3; must be at least as high as the ship's maneuver or jump rating.">3</option>
+              <option value="4" title="Rating 4; must be at least as high as the ship's maneuver or jump rating.">4</option>
+              <option value="5" title="Rating 5; must be at least as high as the ship's maneuver or jump rating.">5</option>
+              <option value="6" title="Rating 6; must be at least as high as the ship's maneuver or jump rating.">6</option>
+            </select>
+            <small class="field-helper ship-select-help" id="ship-power-plant-help"></small>
+          </label>
+          <label class="field">
+            <span>Electronics</span>
+            <select id="ship-electronics" aria-describedby="ship-electronics-help">
+              <option value="0" title="Included in small-craft controls; Sensor DM-4 and no jump-calculation computer.">Baseline</option>
+              <option value="1" title="TL7 · 1 ton · MCr1 · supports Jump 1 · Sensor DM-2.">Model/1</option>
+              <option value="2" title="TL9 · 2 tons · MCr3 · supports Jump 2 · Sensor DM+0.">Model/2</option>
+              <option value="3" title="TL11 · 3 tons · MCr5 · supports Jump 3 · Sensor DM+1.">Model/3</option>
+              <option value="4" title="TL12 · 5 tons · MCr10 · supports Jump 4 · Sensor DM+2.">Model/4</option>
+              <option value="5" title="TL13 · 6 tons · MCr20 · supports Jump 5 · Sensor DM+2.">Model/5</option>
+              <option value="6" title="TL14 · 8 tons · MCr40 · supports Jump 6 · Sensor DM+3.">Model/6</option>
+              <option value="7" title="TL15 · 10 tons · MCr50 · supports Jump 6 · Sensor DM+2.">Model/7</option>
+              <option value="8" title="TL15 · 12 tons · MCr100 · supports Jump 6 · Sensor DM+5.">Model/8</option>
+            </select>
+            <small class="field-helper ship-select-help" id="ship-electronics-help"></small>
+          </label>
+          <label class="custom-characteristics-toggle ship-option field-wide">
+            <input id="ship-electronics-advanced" type="checkbox" aria-describedby="ship-advanced-electronics-help">
+            <span><strong>Advanced electronics</strong><small id="ship-advanced-electronics-help">Costs 50% more and allows one higher Jump rating than the standard model maximum. Its price and supported Jump rating appear in the live ship stats below.</small></span>
+          </label>
+          <label class="field ship-small-craft-field">
+            <span>Small-craft controls</span>
+            <select id="ship-controls" aria-describedby="ship-controls-help">
+              <option value="cockpit1" title="1.5 tons. Cramped; skill checks take DM-1 after more than 24 hours of continuous use.">1-person cockpit (1.5 tons)</option>
+              <option value="cockpit2" title="3 tons. Cramped; skill checks take DM-1 after more than 24 hours of continuous use.">2-person cockpit (3 tons)</option>
+              <option value="cabin1" title="3 tons. More comfortable than a cockpit for long journeys.">1-person control cabin (3 tons)</option>
+              <option value="cabin2" title="6 tons. More comfortable than a cockpit for long journeys.">2-person control cabin (6 tons)</option>
+            </select>
+            <small class="field-helper ship-select-help" id="ship-controls-help"></small>
+          </label>
+          <label class="field">
+            <span>Crew complement</span>
+            <input id="ship-crew" type="number" min="0" max="10000" value="1">
+          </label>
+          <label class="field">
+            <span>Staterooms</span>
+            <input id="ship-staterooms" type="number" min="0" max="10000" value="0">
+          </label>
+          <label class="field">
+            <span>Low berths</span>
+            <input id="ship-low-berths" type="number" min="0" max="10000" value="0">
+          </label>
+          <label class="field ship-small-craft-field">
+            <span>Acceleration couches</span>
+            <input id="ship-couches" type="number" min="0" max="10000" value="0">
+          </label>
+          <label class="field">
+            <span>Other fittings (tons)</span>
+            <input id="ship-extra-tonnage" type="number" min="0" max="10000" step="0.1" value="0">
+            <small class="field-helper">Add the combined displacement of weapons and other components not listed above, including unmodeled fittings from a common design.</small>
+          </label>
+          <label class="field">
+            <span>Other fittings (MCr)</span>
+            <input id="ship-extra-cost" type="number" min="0" max="1000000" step="0.01" value="0">
+          </label>
+          <label class="custom-characteristics-toggle ship-option field-wide">
+            <input id="ship-stealth" type="checkbox">
+            <span><strong>Stealth modifications</strong><small>Costs MCr 0.1 per hull ton.</small></span>
+          </label>
+          <label class="custom-characteristics-toggle ship-option field-wide">
+            <input id="ship-mass-produced" type="checkbox">
+            <span><strong>Mass-produced design</strong><small>Apply the 10% discount to total construction cost.</small></span>
+          </label>
+          <label class="field field-wide">
+            <span>Design notes</span>
+            <textarea id="ship-notes" rows="3" maxlength="4000" placeholder="Role, fittings, crew details, and campaign notes"></textarea>
+          </label>
+        </div>
+        <p class="characteristic-error" id="ship-form-error" role="alert" hidden></p>
+        <div class="derived-characteristics ship-calculation" id="ship-calculation" aria-live="polite" aria-label="Live ship design summary"></div>
+        <div class="dialog-actions">
+          <button class="button button-quiet" id="cancel-ship-dialog-button" type="button">Cancel</button>
+          <button class="button button-primary" type="submit">Save ship design</button>
+        </div>
+      </form>
+    </dialog>
 
     <dialog class="editor-dialog" id="character-dialog" aria-labelledby="dialog-title">
       <form class="editor-form" id="character-form">

@@ -20,11 +20,13 @@ Wayfarer is a responsive, local-first character desk for a Cepheus Deluxe campai
 - Browse built-in personal armor, exploration equipment, and pharmaceuticals, and add custom searchable catalog entries.
 - Browse cybernetic implants by grade, add them to a character, and track Cybernetic Points; exceeding 6 CP flags cyber-dissociation and its social throw penalty.
 - Track a character's carried items against light/heavy-load limits derived from Strength DM; worn backpacks and gear, and powered armor capacity, apply their listed encumbrance rules.
+- Browse the common Cepheus Deluxe small craft, system ships, and starships; copy a design into the ship builder as a starting point.
+- Design, calculate, edit, and save ships independently of characters. Ship options include hover descriptions and the live calculation panel stays visible while editing; the panel shows electronics cost and sensor/jump ratings, including advanced-electronics changes. The builder calculates hull and armor, drives, jump fuel, bridge, accommodations, remaining cargo, cost, hardpoints, and construction time; additional fittings can be entered by tonnage and cost. A nullable character link is reserved in each saved ship record for future crew assignment.
 - Persist records in the browser's local storage and export them as JSON.
-- Ship management and Game Master tools are reserved for later milestones. Robot creation is planned under GM tools, with operator-controlled Drones distinguished from autonomous Smart Drones.
+- Game Master tools remain planned for a later milestone. Robot creation is planned under GM tools, with operator-controlled Drones distinguished from autonomous Smart Drones.
 
 Career-event results and effects are shown for supplied career tables; supported checks are calculated and explicit skill awards are tracked automatically, while other choices and effects remain player-resolved. The built-in catalog includes supplied armor, exploration equipment, pharmaceuticals, and cybernetics; add other equipment through the item editor. Cybernetic effects are described in the catalog but are not automatically applied to character characteristics or skill throws. Aging characteristic changes can be recorded in the character fields.
 
 ## Data
 
-Character records, inventory, and generation notes are stored in browser local storage under `wayfarer.characters.v1`; custom item records use `wayfarer.items.v1`. Built-in items are bundled with the app. Use **Export data** to save characters and the full item catalog as a JSON copy for backup or transfer. Clearing the browser's site data will remove the local records.
+Character records, inventory, and generation notes are stored in browser local storage under `wayfarer.characters.v1`; custom item records use `wayfarer.items.v1`; saved ships use `wayfarer.ships.v1`. Built-in items and common ship designs are bundled with the app. Use **Export data** to save characters, the full item catalog, and saved ships as a JSON copy for backup or transfer. Clearing the browser's site data will remove the local records.
